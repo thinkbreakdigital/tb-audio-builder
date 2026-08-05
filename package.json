@@ -1,0 +1,15 @@
+{
+	"name": "thinkbreak-web-audio-builder",
+	"private": true,
+	"version": "0.0.1",
+	"packageManager": "pnpm@10.33.0",
+	"scripts": {
+		"dev": "pnpm --filter @thinkbreak/builder dev",
+		"build": "pnpm -r build",
+		"check": "pnpm -r check",
+		"lint": "pnpm --filter @thinkbreak/builder lint",
+		"format": "pnpm --filter @thinkbreak/builder format",
+		"test": "pnpm run test:unit",
+		"test:unit": "pnpm --filter @thinkbreak/builder test:unit -- --run"
+	}
+}
