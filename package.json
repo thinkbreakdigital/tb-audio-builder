@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "pnpm --filter @thinkbreak/builder dev",
     "build": "pnpm -r build",
-    "build:railway": "pnpm check && pnpm test:unit && pnpm build",
+    "build:packages": "pnpm --filter \"./packages/*\" build",
+    "build:railway": "pnpm build:packages && pnpm check && pnpm test:unit && pnpm build",
     "start": "pnpm --filter @thinkbreak/builder start",
     "check": "pnpm -r check",
     "lint": "prettier --check apps packages && eslint --no-config-lookup --config eslint.config.js apps packages",
