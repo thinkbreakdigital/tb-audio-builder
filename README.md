@@ -8,7 +8,7 @@ Production: <https://tb-audio-builder-production.up.railway.app>
 
 Requirements:
 
-- Node.js 22.12 or newer within the Node 22 LTS line
+- Node.js 22.22.2 or newer within the Node 22 LTS line (see `.nvmrc`)
 - pnpm 10
 
 Install dependencies and start the Builder:
