@@ -1,0 +1,15 @@
+node_modules/
+**/dist/
+**/.next/
+**/.svelte-kit/
+**/build/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+.env
+.env.*
+!.env.example
+!.env.test
+**/drizzle/meta/
+apps/builder/static/
+**/*.generated.*

@@ -1,9 +1,3 @@
-import type {
-	AmplitudeEnvelope,
-	InstrumentDefinition,
-	PercussionInstrumentDefinition,
-	PitchedInstrumentDefinition
-} from '@thinkbreak/audio-runtime';
 import { z } from 'zod';
 
 export const PitchedWaveformSchema = z.enum(['sine', 'triangle', 'square', 'sawtooth']);

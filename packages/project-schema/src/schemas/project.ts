@@ -1,8 +1,4 @@
-import type {
-	BuilderProject,
-	CompressorSettings,
-	SourceMidiReference
-} from '@thinkbreak/audio-runtime';
+import type { BuilderProject } from '@thinkbreak/audio-runtime';
 import { z } from 'zod';
 import { AudioChannelDefinitionSchema } from './channel';
 import { CompiledSongSchema } from './song';

@@ -1,14 +1,3 @@
-import type {
-	CompiledNote,
-	CompiledSong,
-	CompiledTrack,
-	ModulationEvent,
-	PitchBendEvent,
-	SongMarker,
-	TempoChange,
-	TimeSignatureChange,
-	TrackVolumeEvent
-} from '@thinkbreak/audio-runtime';
 import { z } from 'zod';
 
 const TickSchema = z.number().int().min(0);

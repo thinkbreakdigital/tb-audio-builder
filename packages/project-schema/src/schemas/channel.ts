@@ -1,4 +1,3 @@
-import type { AudioChannelDefinition, ChannelMixSettings } from '@thinkbreak/audio-runtime';
 import { z } from 'zod';
 import { InstrumentDefinitionSchema } from './instrument';
 
