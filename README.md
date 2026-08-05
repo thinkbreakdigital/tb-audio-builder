@@ -46,6 +46,8 @@ be committed. See [`docs/deployment.md`](docs/deployment.md) for the complete de
 The application is served from `apps/builder`. Shared, framework-neutral code belongs in
 `packages/audio-runtime`, and persisted project contracts belong in `packages/project-schema`. See
 [`docs/architecture.md`](docs/architecture.md) for the package and persistence boundaries.
+See [`docs/midi-support.md`](docs/midi-support.md) for supported MIDI events, warnings, and role
+suggestions.
 
 ## Checks
 
