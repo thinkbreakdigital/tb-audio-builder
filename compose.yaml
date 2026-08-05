@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: thinkbreak_audio_builder
+      POSTGRES_PASSWORD: thinkbreak
+      POSTGRES_USER: thinkbreak
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U thinkbreak -d thinkbreak_audio_builder"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:

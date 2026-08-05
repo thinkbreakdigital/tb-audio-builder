@@ -1,15 +1,25 @@
 {
-	"name": "thinkbreak-web-audio-builder",
-	"private": true,
-	"version": "0.0.1",
-	"packageManager": "pnpm@10.33.0",
-	"scripts": {
-		"dev": "pnpm --filter @thinkbreak/builder dev",
-		"build": "pnpm -r build",
-		"check": "pnpm -r check",
-		"lint": "pnpm --filter @thinkbreak/builder lint",
-		"format": "pnpm --filter @thinkbreak/builder format",
-		"test": "pnpm run test:unit",
-		"test:unit": "pnpm --filter @thinkbreak/builder test:unit -- --run"
-	}
+  "name": "thinkbreak-web-audio-builder",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.12.0 <23"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @thinkbreak/builder dev",
+    "build": "pnpm -r build",
+    "build:railway": "pnpm check && pnpm test:unit && pnpm build",
+    "start": "pnpm --filter @thinkbreak/builder start",
+    "check": "pnpm -r check",
+    "lint": "pnpm --filter @thinkbreak/builder lint",
+    "format": "pnpm --filter @thinkbreak/builder format",
+    "test": "pnpm run test:unit",
+    "test:unit": "pnpm --filter @thinkbreak/builder test:unit -- --run",
+    "db:generate": "pnpm --filter @thinkbreak/builder db:generate",
+    "db:migrate": "pnpm --filter @thinkbreak/builder db:migrate",
+    "db:check": "pnpm --filter @thinkbreak/builder db:check",
+    "db:start": "docker compose up -d postgres",
+    "db:stop": "docker compose stop postgres"
+  }
 }
