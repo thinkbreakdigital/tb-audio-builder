@@ -15,7 +15,7 @@
     "lint": "pnpm --filter @thinkbreak/builder lint",
     "format": "pnpm --filter @thinkbreak/builder format",
     "test": "pnpm run test:unit",
-    "test:unit": "pnpm --filter @thinkbreak/builder test:unit -- --run",
+    "test:unit": "pnpm -r --if-present test",
     "db:generate": "pnpm --filter @thinkbreak/builder db:generate",
     "db:migrate": "pnpm --filter @thinkbreak/builder db:migrate",
     "db:check": "pnpm --filter @thinkbreak/builder db:check",

@@ -83,9 +83,15 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.10(@types/node@22.20.1)(vite@8.2.0(@types/node@22.20.1)(esbuild@0.28.1)(tsx@4.23.5))
 
   packages/project-schema:
     dependencies:
+      '@thinkbreak/audio-runtime':
+        specifier: workspace:*
+        version: link:../audio-runtime
       zod:
         specifier: ^4.1.5
         version: 4.4.3
@@ -93,6 +99,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.10(@types/node@22.20.1)(vite@8.2.0(@types/node@22.20.1)(esbuild@0.28.1)(tsx@4.23.5))
 
 packages:
 
