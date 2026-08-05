@@ -26,9 +26,13 @@ sorted by tick. Marker and header changes are sorted by tick.
 
 ## Silently ignored events
 
-The code is the source of truth for this list: it is exported as
-`SILENTLY_IGNORED_EVENT_TYPES` from `packages/midi-parser/src/supported-events.ts`. The entries
-below match that exported constant exactly, including order:
+These events are not read into the compiled song, and they also do not produce a warning. Those are
+two separate properties: an event that the Builder does not read is normally reported so nothing
+disappears without a trace, and this list is the documented exception.
+
+The code is the source of truth for the list: it is exported as `SILENTLY_IGNORED_EVENT_TYPES` from
+`packages/midi-parser/src/supported-events.ts`. The entries below match that exported constant
+exactly, including order:
 
 | Event type          | Why it is ignored                                                                                                                             |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -81,9 +85,14 @@ The name tables are evaluated in this order:
 
 The implementation checks MIDI channel 9 first and returns a high-confidence `percussion`
 suggestion with the reason `Track uses MIDI channel 9, the General MIDI percussion channel.` This
-overrides name-based suggestions. A track with no notes and at least one marker returns a
-high-confidence `metadata` suggestion with the reason `Track contains marker events and no note
-events.`, unless the channel 9 override applies.
+overrides name-based suggestions.
+
+A track with no notes that carries **its own** marker returns a high-confidence `metadata`
+suggestion with the reason `Track contains marker events and no note events.`, unless the channel 9
+override applies. The marker has to belong to that track in the source file. A song-level marker —
+one written to the conductor track, which is where most DAWs put arrangement markers — does not
+make an unrelated note-free track metadata; otherwise every automation-only track in a marked-up
+song would be mislabelled.
 
 ## Missing header defaults
 
