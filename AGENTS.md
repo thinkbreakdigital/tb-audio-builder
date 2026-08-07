@@ -2,15 +2,31 @@
 
 ## Delegating to Codex workers
 
-- Use the non-interactive `codex exec` subcommand for delegated Codex work. The
-  syntax is `codex exec`, not `-exec`.
-- For delegated tasks that are explicitly read-only, invoke the worker with
-  `--sandbox read-only` and state clearly in the prompt that it must not modify
-  files, run mutating commands, or create artifacts.
-- For delegated implementation work that is intentionally allowed to change
-  this repository, use `--sandbox workspace-write` and keep the prompt scoped
-  to the requested files and behavior.
-- Do not use the deprecated `--full-auto` flag or
-  `--dangerously-bypass-approvals-and-sandbox` for delegation.
-- Pass the repository as the worker's working directory with `--cd`/`-C` when
-  the caller is not already running from the repository root.
+Delegate whenever executing an implementation plan or document. The primary agent owns integration and verification. Do not let delegated agents delegate again.
+
+### Model routing
+
+* **Sonnet:** CSS, responsive layouts, components, accessibility, design systems, animations, and substantial UI implementation.
+* **Haiku:** CSS audits, small styling tasks, repetitive UI cleanup, and visual checks.
+* **GPT-5.6 Terra:** API architecture, service boundaries, databases, authentication, migrations, concurrency, and complex backend work.
+* **GPT-5.6 Luna:** CRUD, schemas, validation, adapters, fixtures, tests, and other bounded backend tasks.
+* **Sol or Opus:** Planning, ambiguous cross-cutting work, integration, security-sensitive decisions, and final review.
+
+### Execution
+
+Prefer native subagents. Otherwise run terminal workers non-interactively:
+
+```sh
+codex exec --ephemeral --model gpt-5.6-terra --sandbox workspace-write "<task>"
+codex exec --ephemeral --model gpt-5.6-luna --sandbox workspace-write "<task>"
+claude -p --model sonnet --permission-mode acceptEdits "<task>"
+claude -p --model haiku --permission-mode acceptEdits "<task>"
+```
+
+Give each worker a bounded scope, acceptance criteria, verification commands, and instructions not to delegate further. Use separate worktrees for concurrent writers.
+
+If delegation fails, report the exact error and continue locally. Never weaken permissions automatically.
+
+### codex vs claude
+
+When running in Codex, use native subagents for GPT models and terminal commands for Claude models. When running in Claude Code, use native subagents for Claude models and `codex exec` for GPT models.
