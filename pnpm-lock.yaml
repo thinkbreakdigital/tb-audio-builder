@@ -35,6 +35,12 @@ importers:
 
   apps/builder:
     dependencies:
+      '@thinkbreak/audio-runtime':
+        specifier: workspace:*
+        version: link:../../packages/audio-runtime
+      '@thinkbreak/project-schema':
+        specifier: workspace:*
+        version: link:../../packages/project-schema
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@types/pg@8.20.4)(pg@8.22.0)

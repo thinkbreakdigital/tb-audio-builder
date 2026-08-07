@@ -1,3 +1,38 @@
+<script lang="ts">
+	import ChannelSidebar from '$lib/features/shell/ChannelSidebar.svelte';
+	import LandingScreen from '$lib/features/shell/LandingScreen.svelte';
+	import MainPanel from '$lib/features/shell/MainPanel.svelte';
+	import ProjectBar from '$lib/features/shell/ProjectBar.svelte';
+	import TransportBar from '$lib/features/shell/TransportBar.svelte';
+
+	const FADE_MS = 350;
+
+	let landingMounted = $state(true);
+	let landingFading = $state(false);
+	let workspaceElement = $state<HTMLDivElement>();
+	let fadeTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+	function prefersReducedMotion(): boolean {
+		if (typeof matchMedia !== 'function') return false;
+		return matchMedia('(prefers-reduced-motion: reduce)').matches;
+	}
+
+	function handleStart() {
+		if (landingFading) return;
+		landingFading = true;
+		fadeTimeoutId = setTimeout(
+			() => {
+				landingMounted = false;
+				// The landing was holding focus; hand it to the workspace so the keyboard path continues.
+				workspaceElement?.focus();
+			},
+			prefersReducedMotion() ? 0 : FADE_MS
+		);
+	}
+
+	$effect(() => () => clearTimeout(fadeTimeoutId));
+</script>
+
 <svelte:head>
 	<title>ThinkBreak Web Audio Builder</title>
 	<meta
@@ -6,49 +41,38 @@
 	/>
 </svelte:head>
 
-<main>
-	<h1>ThinkBreak Web Audio Builder</h1>
-</main>
+<div
+	class="workspace"
+	bind:this={workspaceElement}
+	tabindex="-1"
+	inert={landingMounted}
+	aria-hidden={landingMounted ? 'true' : undefined}
+>
+	<ProjectBar />
+	<ChannelSidebar />
+	<MainPanel />
+	<TransportBar />
+</div>
+
+{#if landingMounted}
+	<LandingScreen fading={landingFading} onstart={handleStart} />
+{/if}
 
 <style>
-	:global(*) {
-		box-sizing: border-box;
-	}
-
-	:global(html) {
-		background: #f6f1e7;
-	}
-
-	:global(body) {
-		margin: 0;
-		font-family: 'Space Grotesk', sans-serif;
-	}
-
-	main {
+	.workspace {
 		display: grid;
-		min-height: 100dvh;
-		place-items: center;
-		padding: clamp(1.5rem, 5vw, 4rem);
-		background:
-			linear-gradient(
-				115deg,
-				transparent 48%,
-				rgb(15 76 117 / 8%) 48%,
-				rgb(15 76 117 / 8%) 52%,
-				transparent 52%
-			),
-			radial-gradient(circle at 50% 50%, #fffdf8 0%, #f6f1e7 68%);
+		grid-template-rows: 40px minmax(0, 1fr) 48px;
+		grid-template-columns: 260px minmax(0, 1fr);
+		height: 100%;
+		min-height: 0;
+		overflow: hidden;
 	}
 
-	h1 {
-		max-width: 14ch;
-		margin: 0;
-		color: #1b262c;
-		font-size: clamp(2.75rem, 9vw, 7.5rem);
-		font-weight: 700;
-		letter-spacing: -0.065em;
-		line-height: 0.88;
-		text-align: center;
-		text-wrap: balance;
+	/* Below the supported 1024px viewport the sidebar stacks above the main panel. */
+	@media (max-width: 899px) {
+		.workspace {
+			grid-template-rows: 40px minmax(0, 180px) minmax(0, 1fr) 48px;
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 </style>

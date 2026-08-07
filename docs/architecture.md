@@ -19,6 +19,22 @@ Database credentials are read through SvelteKit's private server environment and
 imported into browser code. PostgreSQL stores durable project documents and source files, while
 IndexedDB will remain the immediate local-first persistence layer.
 
+## Builder UI structure
+
+- `src/lib/styles` holds the design tokens and the global sheet. Components use the token variables
+  and never introduce raw color literals.
+- `src/lib/components` holds presentational primitives (buttons, fields, panel, dialog). They own no
+  application state.
+- `src/lib/features` holds feature-scoped UI. `features/shell` contains the four workspace regions:
+  `ProjectBar`, `ChannelSidebar`, `MainPanel`, and `TransportBar`.
+- `src/lib/state` holds the runes state modules, one per concern: `project` (the persisted
+  `BuilderProject` and its mutators), `ui` (selection, active view, audio preference), `status`
+  (user-visible messages), `playback` (transport readouts), and `sync` (server sync status). State
+  modules never touch the DOM, the database, or Web Audio, and never import each other.
+
+Route components call state modules; state modules call client or server services. The solo/mute
+resolution rule lives once in `state/project.svelte.ts` as `isChannelAudible`.
+
 ## Runtime flow
 
 ```text

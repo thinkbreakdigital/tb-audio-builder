@@ -1,17 +1,26 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import favicon from '$lib/assets/favicon.svg';
+	import StatusRegion from '$lib/components/StatusRegion.svelte';
+	import '$lib/styles/global.css';
 
-	let { children } = $props();
+	let { children }: { children: Snippet } = $props();
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<link rel="preconnect" href="https://fonts.googleapis.com" />
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-	<link
-		href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
-		rel="stylesheet"
-	/>
 </svelte:head>
 
-{@render children()}
+<div class="app">
+	{@render children()}
+	<StatusRegion />
+</div>
+
+<style>
+	.app {
+		display: grid;
+		grid-template-rows: minmax(0, 1fr) auto;
+		height: 100dvh;
+		overflow: hidden;
+	}
+</style>
