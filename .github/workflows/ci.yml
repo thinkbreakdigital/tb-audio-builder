@@ -30,7 +30,7 @@ jobs:
           version: 10.33.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.12
+          node-version: 22.22.2
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:check

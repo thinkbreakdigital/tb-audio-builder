@@ -1,5 +1,9 @@
 <script lang="ts">
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ChannelHeaderPanel from '$lib/features/channels/ChannelHeaderPanel.svelte';
+	import ImportSummary from '$lib/features/midi-import/ImportSummary.svelte';
+	import MidiDropZone from '$lib/features/midi-import/MidiDropZone.svelte';
+	import { projectState } from '$lib/state/project.svelte.js';
 	import { uiState, type MainView } from '$lib/state/ui.svelte.js';
 
 	interface Tab {
@@ -31,6 +35,8 @@
 		event.preventDefault();
 		selectTabAt(nextIndex);
 	}
+
+	const hasSong = $derived(projectState.project?.song != null);
 </script>
 
 <main class="main-panel">
@@ -61,7 +67,19 @@
 		aria-labelledby="tab-instrument"
 		hidden={uiState.mainView !== 'instrument'}
 	>
-		<EmptyState message="Select a channel to edit its instrument." />
+		{#if !hasSong}
+			<MidiDropZone />
+		{:else}
+			{#if uiState.selectedChannelId !== null}
+				<ChannelHeaderPanel />
+				<EmptyState message="Instrument editing arrives in a later phase." />
+			{:else}
+				<EmptyState message="Select a channel to edit its instrument." />
+			{/if}
+			<!-- Import auto-selects a channel, so gating the summary on an empty selection would
+			     leave it unreachable after a normal import. -->
+			<ImportSummary />
+		{/if}
 	</div>
 
 	<div
@@ -117,6 +135,7 @@
 	.tab-body {
 		flex: 1;
 		min-height: 0;
+		padding: var(--space-3);
 		overflow-y: auto;
 	}
 

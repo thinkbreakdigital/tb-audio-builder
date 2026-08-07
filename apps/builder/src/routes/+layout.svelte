@@ -5,7 +5,15 @@
 	import '$lib/styles/global.css';
 
 	let { children }: { children: Snippet } = $props();
+
+	// Dropping a file anywhere outside MidiDropZone must not navigate the browser away from the
+	// app; both dragover and drop have to be prevented for that.
+	function preventNavigation(event: DragEvent) {
+		event.preventDefault();
+	}
 </script>
+
+<svelte:document ondragover={preventNavigation} ondrop={preventNavigation} />
 
 <svelte:head>
 	<link rel="icon" href={favicon} />

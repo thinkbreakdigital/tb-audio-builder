@@ -43,6 +43,7 @@
 	},
 	"dependencies": {
 		"@thinkbreak/audio-runtime": "workspace:*",
+		"@thinkbreak/midi-parser": "workspace:*",
 		"@thinkbreak/project-schema": "workspace:*",
 		"drizzle-orm": "^0.45.2",
 		"pg": "^8.22.0"
