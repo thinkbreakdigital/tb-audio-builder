@@ -38,6 +38,9 @@ importers:
       '@thinkbreak/audio-runtime':
         specifier: workspace:*
         version: link:../../packages/audio-runtime
+      '@thinkbreak/midi-parser':
+        specifier: workspace:*
+        version: link:../../packages/midi-parser
       '@thinkbreak/project-schema':
         specifier: workspace:*
         version: link:../../packages/project-schema

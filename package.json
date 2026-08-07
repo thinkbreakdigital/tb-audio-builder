@@ -5,13 +5,15 @@
   "version": "0.0.1",
   "packageManager": "pnpm@10.33.0",
   "engines": {
-    "node": ">=22.22.2 <23"
+    "node": ">=22.23.2 <23"
   },
   "scripts": {
     "dev": "pnpm --filter @thinkbreak/builder dev",
     "build": "pnpm -r build",
     "build:packages": "pnpm --filter \"./packages/*\" build",
-    "build:railway": "pnpm build:packages && pnpm check && pnpm test:unit && pnpm build",
+    "verify:lockfile": "pnpm install --frozen-lockfile --lockfile-only",
+    "verify": "pnpm verify:lockfile && pnpm build:packages && pnpm check && pnpm lint && pnpm test:unit && pnpm build",
+    "build:railway": "pnpm verify",
     "start": "pnpm --filter @thinkbreak/builder start",
     "check": "pnpm -r check",
     "lint": "prettier --check apps packages && eslint --no-config-lookup --config eslint.config.js apps packages",

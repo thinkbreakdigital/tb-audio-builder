@@ -22,10 +22,19 @@ The current production application is available at
    ```
 
 5. Generate a Railway-provided domain for the application service.
+6. Enable **Wait for CI** on the application service (Settings → Build). This one is not
+   expressible in `railway.json`, so it does not survive recreating the service and has to be set
+   by hand. Without it Railway builds every push in parallel with GitHub Actions and will happily
+   deploy a commit that CI is in the middle of rejecting.
 
-The committed `railway.json` runs type checks, unit tests, and the production build. It applies
-Drizzle migrations in the pre-deploy phase, starts the SvelteKit Node server, and requires
-`GET /api/health` to succeed before the deployment becomes active.
+The committed `railway.json` sets `buildCommand: pnpm build:railway`, which is exactly `pnpm
+verify` — the same gate CI runs and the same one you run locally, so there is no deploy-only step
+list that can drift. It applies Drizzle migrations in the pre-deploy phase, starts the SvelteKit
+Node server, and requires `GET /api/health` to succeed before the deployment becomes active.
+
+Railway's builder takes its Node version from `.nvmrc` and its pnpm from the `packageManager`
+field, matching CI and local development. Both install with `--frozen-lockfile`: a `pnpm-lock.yaml`
+that lags any `package.json` fails the build before anything compiles.
 
 ## Deployments
 
