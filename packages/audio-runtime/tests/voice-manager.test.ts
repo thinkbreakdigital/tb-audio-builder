@@ -51,6 +51,7 @@ function makePercussionInstrument(chokeGroup: string | null): PercussionInstrume
 		presetId: null,
 		oscillatorLayer: {
 			enabled: true,
+			pitchTracksNote: false,
 			waveform: 'sine',
 			startFrequencyHz: 200,
 			endFrequencyHz: 60,
@@ -63,6 +64,7 @@ function makePercussionInstrument(chokeGroup: string | null): PercussionInstrume
 		},
 		noiseLayer: {
 			enabled: false,
+			filterTracksNote: false,
 			filterType: 'highpass',
 			filterFrequencyHz: 2000,
 			filterQ: 1,
@@ -72,6 +74,7 @@ function makePercussionInstrument(chokeGroup: string | null): PercussionInstrume
 			releaseSeconds: 0.05,
 			gain: 0
 		},
+		rootMidiNote: 60,
 		chokeGroup
 	};
 }

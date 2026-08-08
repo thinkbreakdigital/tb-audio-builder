@@ -114,6 +114,7 @@ export function makePercussionInstrument(
 		presetId: null,
 		oscillatorLayer: {
 			enabled: true,
+			pitchTracksNote: false,
 			waveform: 'sine',
 			startFrequencyHz: 200,
 			endFrequencyHz: 60,
@@ -126,6 +127,7 @@ export function makePercussionInstrument(
 		},
 		noiseLayer: {
 			enabled: false,
+			filterTracksNote: false,
 			filterType: 'highpass',
 			filterFrequencyHz: 2000,
 			filterQ: 1,
@@ -135,6 +137,7 @@ export function makePercussionInstrument(
 			releaseSeconds: 0.05,
 			gain: 0
 		},
+		rootMidiNote: 60,
 		chokeGroup
 	};
 }

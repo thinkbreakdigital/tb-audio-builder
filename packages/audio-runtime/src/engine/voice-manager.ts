@@ -5,6 +5,7 @@
  */
 
 import { DEFAULT_AUDIO_LIMITS } from '../constants.js';
+import { resolveChokeGroup } from '../synth/percussion-voice.js';
 import type { InstrumentDefinition } from '../types/instrument.js';
 import { assertNever } from '../util/assert-never.js';
 import type {
@@ -113,8 +114,9 @@ export function createVoiceManager(input: {
 
 	function start(request: VoiceStartRequest, priority: VoicePriority): Voice | null {
 		const factory = registry.get(request.instrument.kind);
-		const chokeGroup =
-			request.instrument.kind === 'percussion' ? request.instrument.chokeGroup : null;
+		// Normalized through the same helper the engine chokes with, so the two can never disagree
+		// about which group a voice belongs to (§4.4 rule 5).
+		const chokeGroup = resolveChokeGroup(request.instrument);
 		const channelLimit = effectiveChannelLimit(request.channelId, request.instrument);
 		const sequence = request.sequence ?? nextFallbackSequence++;
 
@@ -185,7 +187,10 @@ export function createVoiceManager(input: {
 
 	function stopChokeGroup(chokeGroup: string, atSeconds: number): void {
 		for (const record of [...activeRecords, ...releasingRecords]) {
-			if (record.chokeGroup === chokeGroup) {
+			// Only what is already sounding. A voice that starts at or after `atSeconds` — the choking
+			// hit itself, and anything scheduled later in the same look-ahead window — is left alone,
+			// so a group never cuts its own trigger (§4.4 rule 3).
+			if (record.chokeGroup === chokeGroup && record.startedAtSeconds < atSeconds) {
 				removeRecord(record);
 				record.voice.stop(atSeconds);
 			}

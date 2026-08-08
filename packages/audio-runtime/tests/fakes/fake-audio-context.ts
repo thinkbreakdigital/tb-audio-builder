@@ -111,12 +111,26 @@ export interface FakeBufferSourceNode extends FakeAudioNode {
 	readonly nodeKind: 'buffer-source';
 	readonly playbackRate: FakeAudioParam;
 	buffer: unknown;
+	loop: boolean;
 	onended: (() => void) | null;
 	/** Null until scheduled; `undefined` when started with no explicit time. */
 	readonly startedAtSeconds: number | null | undefined;
 	readonly stoppedAtSeconds: number | null | undefined;
+	/** Every `stop()` time in call order — the last one wins, as in the real API. */
+	readonly stopCalls: readonly (number | undefined)[];
 	start(when?: number): void;
 	stop(when?: number): void;
+	/** Test-only: fire the `ended` event. The fake clock never reaches a scheduled stop on its own. */
+	endNow(): void;
+}
+
+/** The subset of `AudioBuffer` the runtime touches, with channel data that survives being written. */
+export interface FakeAudioBuffer {
+	readonly numberOfChannels: number;
+	readonly length: number;
+	readonly sampleRate: number;
+	readonly duration: number;
+	getChannelData(channel: number): Float32Array;
 }
 
 export interface FakeDestinationNode extends FakeAudioNode {
@@ -143,7 +157,7 @@ export interface FakeAudioContext {
 	createDynamicsCompressor(): FakeAudioNode;
 	createAnalyser(): FakeAudioNode;
 	createBufferSource(): FakeAudioNode;
-	createBuffer(channelCount: number, frameCount: number, sampleRate: number): unknown;
+	createBuffer(numberOfChannels: number, length: number, sampleRate: number): FakeAudioBuffer;
 	resume(): Promise<void>;
 	suspend(): Promise<void>;
 	close(): Promise<void>;
@@ -314,9 +328,11 @@ class FakeBufferSourceNodeImpl extends FakeAudioNodeBase implements FakeBufferSo
 	readonly nodeKind = 'buffer-source';
 	readonly playbackRate = createFakeAudioParam(1);
 	buffer: unknown = null;
+	loop = false;
 	onended: (() => void) | null = null;
 	startedAtSeconds: number | null | undefined = null;
 	stoppedAtSeconds: number | null | undefined = null;
+	readonly stopCalls: Array<number | undefined> = [];
 
 	start(when?: number): void {
 		this.startedAtSeconds = when;
@@ -324,6 +340,38 @@ class FakeBufferSourceNodeImpl extends FakeAudioNodeBase implements FakeBufferSo
 
 	stop(when?: number): void {
 		this.stoppedAtSeconds = when;
+		this.stopCalls.push(when);
+	}
+
+	endNow(): void {
+		this.onended?.();
+	}
+}
+
+class FakeAudioBufferImpl implements FakeAudioBuffer {
+	private readonly channels: Float32Array[];
+
+	constructor(
+		readonly numberOfChannels: number,
+		readonly length: number,
+		readonly sampleRate: number
+	) {
+		this.channels = Array.from({ length: numberOfChannels }, () => new Float32Array(length));
+	}
+
+	get duration(): number {
+		return this.length / this.sampleRate;
+	}
+
+	/** The same array every call, so samples written through it stay written. */
+	getChannelData(channel: number): Float32Array {
+		const data = this.channels[channel];
+		if (data === undefined) {
+			throw new Error(
+				`FakeAudioBuffer.getChannelData: channel ${channel} of ${this.numberOfChannels}.`
+			);
+		}
+		return data;
 	}
 }
 
@@ -444,13 +492,8 @@ class FakeAudioContextImpl implements FakeAudioContext {
 		return this.register(new FakeBufferSourceNodeImpl());
 	}
 
-	createBuffer(channelCount: number, frameCount: number, sampleRate: number): unknown {
-		return {
-			channelCount,
-			frameCount,
-			sampleRate,
-			getChannelData: () => new Float32Array(frameCount)
-		};
+	createBuffer(numberOfChannels: number, length: number, sampleRate: number): FakeAudioBuffer {
+		return new FakeAudioBufferImpl(numberOfChannels, length, sampleRate);
 	}
 
 	async resume(): Promise<void> {
@@ -552,4 +595,10 @@ export function asBaseAudioContext(fake: FakeAudioContext): BaseAudioContext {
 export function asAudioNode(fake: FakeAudioNode): AudioNode {
 	// `unknown` cast: see asBaseAudioContext().
 	return fake as unknown as AudioNode;
+}
+
+/** See asBaseAudioContext() — the same boundary cast, back the other way, for a buffer. */
+export function asFakeAudioBuffer(buffer: AudioBuffer): FakeAudioBuffer {
+	// `unknown` cast: see asBaseAudioContext().
+	return buffer as unknown as FakeAudioBuffer;
 }

@@ -23,8 +23,8 @@ import type { ChannelBus } from '../mixer/channel-bus.js';
 import { createMasterBus } from '../mixer/master-bus.js';
 import type { MasterBus } from '../mixer/master-bus.js';
 import { clamp } from '../synth/conversions.js';
+import { createPercussionVoiceFactory, resolveChokeGroup } from '../synth/percussion-voice.js';
 import { createPitchedVoiceFactory } from '../synth/pitched-voice.js';
-import { createSilentVoiceFactory } from '../synth/silent-voice.js';
 import { resolveMaxVoicesForChannel, resolveVoicePriority } from '../synth/voice-priority.js';
 import { createVoiceFactoryRegistry } from '../synth/voice.js';
 import type { PitchBendPoint, VoiceFactory } from '../synth/voice.js';
@@ -100,9 +100,10 @@ export function createAudioEngine(options?: {
 	contextFactory?: () => BaseAudioContext;
 	schedulerSettings?: { lookaheadMs: number; intervalMs: number };
 	/**
-	 * Deliberate extension beyond spec §4.9's documented options. Phase 06 registers only the
-	 * silent factories (§7), and phases 07/08 need a seam to register real ones; tests use the same
-	 * seam to hold on to the factory's `createdVoices` view. Defaults to fresh silent factories.
+	 * Deliberate extension beyond spec §4.9's documented options. Phase 06 registered only
+	 * silent factories (§7), and phases 07/08 needed a seam to register real ones; tests still use
+	 * that seam to hold on to a silent factory's `createdVoices` view. Defaults to the real pitched
+	 * and percussion factories.
 	 */
 	voiceFactories?: readonly VoiceFactory[];
 }): AudioEngine {
@@ -111,8 +112,7 @@ export function createAudioEngine(options?: {
 	const registry = createVoiceFactoryRegistry();
 	const factories = options?.voiceFactories ?? [
 		createPitchedVoiceFactory(),
-		// Percussion stays silent until phase 08 registers its factory.
-		createSilentVoiceFactory('percussion').factory
+		createPercussionVoiceFactory()
 	];
 	for (const factory of factories) registry.register(factory);
 
@@ -236,6 +236,17 @@ export function createAudioEngine(options?: {
 	}
 
 	/**
+	 * A choke group cuts whatever is already sounding in the same group, immediately before the new
+	 * hit starts (§4.4 rule 2) — a closed hi-hat silencing a ringing open one. It runs on both the
+	 * scheduled and the preview path, so an auditioned hat chokes exactly as a played one does.
+	 */
+	function chokeGroupBefore(instrument: InstrumentDefinition, startAtSeconds: number): void {
+		const chokeGroup = resolveChokeGroup(instrument);
+		if (chokeGroup === null) return;
+		voiceManager.stopChokeGroup(chokeGroup, startAtSeconds);
+	}
+
+	/**
 	 * Channels are resolved here, at dispatch time, never in the timeline (§4.3 rule 2, §4.9
 	 * rule 2), so instrument and enablement edits take effect without a rebuild. Mute and solo
 	 * deliberately do NOT skip dispatch: they are gain-only on the bus, so un-muting mid-note is
@@ -250,6 +261,7 @@ export function createAudioEngine(options?: {
 		const bus = channelBuses.get(event.channelId);
 		if (bus === undefined) return;
 
+		chokeGroupBefore(channel.instrument, startAtSeconds);
 		voiceManager.start(
 			{
 				channelId: event.channelId,
@@ -497,6 +509,7 @@ export function createAudioEngine(options?: {
 			if (context === null || bus === undefined || channel.instrument === null) return;
 
 			const startAtSeconds = context.currentTime + PREVIEW_START_OFFSET_SECONDS;
+			chokeGroupBefore(channel.instrument, startAtSeconds);
 			voiceManager.start(
 				{
 					channelId,

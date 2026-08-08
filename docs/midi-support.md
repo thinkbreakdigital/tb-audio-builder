@@ -101,6 +101,12 @@ The implementation checks MIDI channel 9 first and returns a high-confidence `pe
 suggestion with the reason `Track uses MIDI channel 9, the General MIDI percussion channel.` This
 overrides name-based suggestions.
 
+A percussion channel plays one designed instrument for every note it receives — there is no General
+MIDI drum map, so note 36 and note 38 on the same track produce the same sound at different
+velocities. If you want the note number to matter, either split the track into one channel per drum
+or turn on note tracking for a layer, which transposes that layer's frequency by the note's
+interval from the instrument's root note.
+
 A track with no notes that carries **its own** marker returns a high-confidence `metadata`
 suggestion with the reason `Track contains marker events and no note events.`, unless the channel 9
 override applies. The marker has to belong to that track in the source file. A song-level marker —

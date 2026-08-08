@@ -59,6 +59,7 @@ export const PercussionInstrumentDefinitionSchema = z
 		oscillatorLayer: z
 			.object({
 				enabled: z.boolean(),
+				pitchTracksNote: z.boolean(),
 				waveform: PitchedWaveformSchema,
 				startFrequencyHz: z.number().min(20).max(8_000),
 				endFrequencyHz: z.number().min(20).max(8_000),
@@ -73,6 +74,7 @@ export const PercussionInstrumentDefinitionSchema = z
 		noiseLayer: z
 			.object({
 				enabled: z.boolean(),
+				filterTracksNote: z.boolean(),
 				filterType: FilterKindSchema,
 				filterFrequencyHz: z.number().min(20).max(20_000),
 				filterQ: z.number().min(0.1).max(20),
@@ -83,6 +85,7 @@ export const PercussionInstrumentDefinitionSchema = z
 				gain: z.number().min(0).max(1)
 			})
 			.strict(),
+		rootMidiNote: z.number().int().min(0).max(127),
 		chokeGroup: z.string().min(1).nullable()
 	})
 	.strict();

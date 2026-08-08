@@ -46,6 +46,12 @@ export interface PercussionInstrumentDefinition {
 	oscillatorLayer: {
 		enabled: boolean;
 		waveform: PitchedWaveform;
+		/**
+		 * When false — the default — the sweep below plays at exactly the designed frequencies and the
+		 * triggering note number is ignored, which is the classic one-sound-per-channel drum model.
+		 * When true, the whole sweep is transposed by the note's interval from `rootMidiNote`.
+		 */
+		pitchTracksNote: boolean;
 		startFrequencyHz: number; // 20..8000
 		endFrequencyHz: number; // 20..8000
 		pitchDecaySeconds: number; // 0.001..1
@@ -58,6 +64,12 @@ export interface PercussionInstrumentDefinition {
 	noiseLayer: {
 		enabled: boolean;
 		filterType: FilterKind;
+		/**
+		 * White noise has no pitch of its own, so what tracks the note here is the filter cutoff —
+		 * transposed by the same interval, from the same `rootMidiNote`, as the oscillator layer.
+		 * Independent of `oscillatorLayer.pitchTracksNote`: either layer may track without the other.
+		 */
+		filterTracksNote: boolean;
 		filterFrequencyHz: number; // 20..20000
 		filterQ: number; // 0.1..20
 		attackSeconds: number; // 0..0.5
@@ -66,6 +78,8 @@ export interface PercussionInstrumentDefinition {
 		releaseSeconds: number; // 0.001..2
 		gain: number; // 0..1
 	};
+	/** The note at which a tracking layer plays its designed frequencies unchanged. */
+	rootMidiNote: number; // 0..127, integer
 	chokeGroup: string | null;
 }
 

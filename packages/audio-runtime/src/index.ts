@@ -11,6 +11,8 @@ export * from './synth/silent-voice.js';
 export * from './synth/envelope.js';
 export * from './synth/voice-priority.js';
 export * from './synth/pitched-voice.js';
+export * from './synth/noise-buffer.js';
+export * from './synth/percussion-voice.js';
 
 export * from './presets/index.js';
 

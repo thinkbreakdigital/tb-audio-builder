@@ -161,6 +161,7 @@ describe('schemas', () => {
 				presetId: null,
 				oscillatorLayer: {
 					enabled: true,
+					pitchTracksNote: false,
 					waveform: 'sine',
 					startFrequencyHz: 20,
 					endFrequencyHz: 8000,
@@ -173,6 +174,7 @@ describe('schemas', () => {
 				},
 				noiseLayer: {
 					enabled: true,
+					filterTracksNote: false,
 					filterType: 'bandpass',
 					filterFrequencyHz: value,
 					filterQ: 20,
@@ -182,6 +184,7 @@ describe('schemas', () => {
 					releaseSeconds: 2,
 					gain: 1
 				},
+				rootMidiNote: 60,
 				chokeGroup: null
 			}),
 			PercussionInstrumentDefinitionSchema
