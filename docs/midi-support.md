@@ -29,11 +29,11 @@ sorted by tick. Marker and header changes are sorted by tick.
 Compiling an event and applying it at playback are separate steps, and not everything the parser
 keeps reaches the audio runtime yet:
 
-| Compiled event                        | Applied at playback                                                                                                                          |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pitchBends`                           | Yes. Bends inside a note are scheduled onto the voice's detune, scaled by the instrument's `pitchBendRangeSemitones`, and skipped when it is 0. |
-| `modulationEvents` (CC1)               | **No.** Parsed, stored, and carried through save, sync, and export, but the runtime ignores them in this release.                              |
-| `volumeEvents` (CC7)                   | **No.** Same: stored but not applied. Channel gain comes from the mixer, not from the MIDI track.                                              |
+| Compiled event           | Applied at playback                                                                                                                             |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pitchBends`             | Yes. Bends inside a note are scheduled onto the voice's detune, scaled by the instrument's `pitchBendRangeSemitones`, and skipped when it is 0. |
+| `modulationEvents` (CC1) | **No.** Parsed, stored, and carried through save, sync, and export, but the runtime ignores them in this release.                               |
+| `volumeEvents` (CC7)     | **No.** Same: stored but not applied. Channel gain comes from the mixer, not from the MIDI track.                                               |
 
 They are kept rather than dropped so a re-import never loses data and a later release can apply them
 without asking the user to import the file again.
@@ -79,6 +79,13 @@ Unsupported events are aggregated as one warning per track per event type, rathe
 per occurrence. The warning message includes the total occurrence count, and `tick` is the first
 occurrence. The collector exposes the first 200 warning entries. If more entries exist, it appends a
 final `warningsTruncated` warning with the message `Warnings were truncated after 200 entries.`
+
+The parser also inspects the raw MIDI event stream so it can report events that the MIDI library
+does not expose. If that inspection is unavailable or incomplete, the first warning is the
+file-level `eventScanIncomplete` warning. It asks you to re-export the file from your DAW before
+relying on unsupported-event warnings. This warning remains visible even when the warning cap is
+reached. In that case, the parser conservatively retains parsed tracks that only appear empty;
+after a complete inspection, truly empty tracks are skipped.
 
 ## Role suggestions
 

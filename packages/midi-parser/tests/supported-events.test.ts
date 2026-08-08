@@ -96,7 +96,7 @@ describe('supported-events reporting', () => {
 		}
 	});
 
-	it('caps warnings at 200 entries and appends a warningsTruncated entry past 300 distinct event types', () => {
+	it('prioritizes an incomplete-event-scan warning ahead of the cap and appends warningsTruncated', () => {
 		// Only 128 controller numbers exist, and 4 of them (1, 7, 121, 123) are not "other
 		// unsupported controller" warnings, leaving 124 distinct controlChange:N event types per
 		// track. Spreading them across 3 tracks yields 3 * 124 = 372 distinct (track, eventType)
@@ -114,7 +114,8 @@ describe('supported-events reporting', () => {
 				value: 0.5
 			}))
 		}));
-		const fileBytes = buildMidiFixture({ tracks });
+		const rawFileBytes = buildMidiFixture({ tracks });
+		const fileBytes = new Uint8Array([...new Uint8Array(rawFileBytes), 0]).buffer;
 
 		const result = compileMidiFile({ fileBytes, filename: 'flood.mid' });
 
@@ -122,6 +123,10 @@ describe('supported-events reporting', () => {
 		// warningsTruncated entry on top of that cap, so the total is 201: 200 real warnings plus
 		// the marker.
 		expect(result.warnings).toHaveLength(201);
+		expect(result.warnings[0]?.eventType).toBe('eventScanIncomplete');
+		expect(
+			result.warnings.filter((warning) => warning.eventType === 'eventScanIncomplete')
+		).toHaveLength(1);
 		expect(result.warnings.slice(0, 200).every((w) => w.eventType !== 'warningsTruncated')).toBe(
 			true
 		);

@@ -336,14 +336,41 @@ function hasControllerEvent(scannedEvents: readonly ScannedEvent[] | undefined):
 	return scannedEvents?.some((event) => event.eventType.startsWith('controlChange:')) ?? false;
 }
 
+function hasParsedControllerEvent(midi: Midi, trackIndex: number): boolean {
+	const track = midi.tracks[trackIndex];
+	if (track === undefined) return false;
+
+	return Object.values(track.controlChanges).some((controlChanges) => controlChanges.length > 0);
+}
+
+function maxNormalizedTrackTick(input: {
+	endOfTrackTicks: number | undefined;
+	notes: readonly CompiledNote[];
+	pitchBends: readonly PitchBendEvent[];
+	modulationEvents: readonly ModulationEvent[];
+	volumeEvents: readonly TrackVolumeEvent[];
+}): number {
+	const { endOfTrackTicks, notes, pitchBends, modulationEvents, volumeEvents } = input;
+	return Math.max(
+		normalizedTick(endOfTrackTicks ?? 0),
+		...notes.map((note) => note.tick + note.durationTicks),
+		...pitchBends.map((pitchBend) => pitchBend.tick),
+		...modulationEvents.map((controlChange) => controlChange.tick),
+		...volumeEvents.map((controlChange) => controlChange.tick),
+		0
+	);
+}
+
 export function normalizeMidi(input: {
 	midi: Midi;
 	sourceFilename: string;
 	songId: string;
 	scannedEventsByTrack: readonly (readonly ScannedEvent[] | undefined)[];
+	inspectionComplete: boolean;
 	warnings: MidiWarningCollector;
 }): { song: CompiledSong; tracks: readonly NormalizedTrack[] } {
-	const { midi, sourceFilename, songId, scannedEventsByTrack, warnings } = input;
+	const { midi, sourceFilename, songId, scannedEventsByTrack, inspectionComplete, warnings } =
+		input;
 	const tempoChanges = normalizeTempoChanges(midi, sourceFilename, warnings);
 	const timeSignatures = normalizeTimeSignatures(midi, sourceFilename, warnings);
 	const markers = normalizeMarkers(midi, sourceFilename, warnings);
@@ -369,7 +396,8 @@ export function normalizeMidi(input: {
 		const modulationEvents = normalizeControlChanges<ModulationEvent>(midi, trackIndex, 1);
 		const volumeEvents = normalizeControlChanges<TrackVolumeEvent>(midi, trackIndex, 7);
 		const hasMarker = hasMarkerEvent(scannedEvents);
-		const hasController = hasControllerEvent(scannedEvents);
+		const hasController =
+			hasControllerEvent(scannedEvents) || hasParsedControllerEvent(midi, trackIndex);
 		const hasEvents =
 			notes.length > 0 ||
 			pitchBends.length > 0 ||
@@ -377,9 +405,18 @@ export function normalizeMidi(input: {
 			volumeEvents.length > 0 ||
 			hasMarker ||
 			hasController;
-		durationTicks = Math.max(durationTicks, normalizedTick(track.endOfTrackTicks ?? 0));
+		durationTicks = Math.max(
+			durationTicks,
+			maxNormalizedTrackTick({
+				endOfTrackTicks: track.endOfTrackTicks,
+				notes,
+				pitchBends,
+				modulationEvents,
+				volumeEvents
+			})
+		);
 
-		if (!hasEvents) {
+		if (!hasEvents && inspectionComplete) {
 			warnings.add({
 				sourceFilename,
 				trackName,
@@ -411,14 +448,6 @@ export function normalizeMidi(input: {
 			hasNotes: notes.length > 0,
 			hasMarker
 		});
-
-		for (const note of notes)
-			durationTicks = Math.max(durationTicks, note.tick + note.durationTicks);
-		for (const pitchBend of pitchBends) durationTicks = Math.max(durationTicks, pitchBend.tick);
-		for (const controlChange of modulationEvents)
-			durationTicks = Math.max(durationTicks, controlChange.tick);
-		for (const controlChange of volumeEvents)
-			durationTicks = Math.max(durationTicks, controlChange.tick);
 	}
 
 	return {

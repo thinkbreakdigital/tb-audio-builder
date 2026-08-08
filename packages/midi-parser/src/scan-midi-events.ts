@@ -8,11 +8,13 @@ export interface ScannedEvent {
 export interface ScannedMidiChunk {
 	events: readonly ScannedEvent[];
 	groupCount: number;
+	complete: boolean;
 }
 
 export interface ScannedMidiFile {
 	chunks: readonly ScannedMidiChunk[];
 	format: number;
+	complete: boolean;
 }
 
 interface VlqResult {
@@ -112,20 +114,31 @@ function scanTrack(
 	let byteIndex = startByteIndex;
 	let tick = 0;
 	let runningStatus: number | undefined;
+	let complete = true;
+	let sawEndOfTrack = false;
 
 	while (byteIndex < endByteIndex) {
 		const delta = readVlq(bytes, byteIndex, endByteIndex);
-		if (delta === undefined) break;
+		if (delta === undefined) {
+			complete = false;
+			break;
+		}
 		byteIndex = delta.nextByteIndex;
 		tick += delta.value;
 
 		const nextByte = bytes[byteIndex];
-		if (nextByte === undefined) break;
+		if (nextByte === undefined) {
+			complete = false;
+			break;
+		}
 
 		let status = nextByte;
 		let dataByteIndex: number;
 		if (status < 0x80) {
-			if (runningStatus === undefined) break;
+			if (runningStatus === undefined) {
+				complete = false;
+				break;
+			}
 			status = runningStatus;
 			dataByteIndex = byteIndex;
 		} else {
@@ -147,6 +160,7 @@ function scanTrack(
 				firstDataByte >= 0x80 ||
 				finalDataByte >= 0x80
 			) {
+				complete = false;
 				break;
 			}
 
@@ -174,17 +188,26 @@ function scanTrack(
 		runningStatus = undefined;
 		if (status === 0xff) {
 			const metaType = bytes[byteIndex];
-			if (metaType === undefined) break;
+			if (metaType === undefined) {
+				complete = false;
+				break;
+			}
 			const payloadLength = readVlq(bytes, byteIndex + 1, endByteIndex);
 			if (
 				payloadLength === undefined ||
 				payloadLength.nextByteIndex + payloadLength.value > endByteIndex
 			) {
+				complete = false;
 				break;
 			}
 
 			addEvent(events, `meta:${metaEventTypeName(metaType)}`, tick, 0);
 			byteIndex = payloadLength.nextByteIndex + payloadLength.value;
+			if (metaType === 0x2f) {
+				if (payloadLength.value !== 0 || byteIndex !== endByteIndex) complete = false;
+				sawEndOfTrack = true;
+				break;
+			}
 			continue;
 		}
 
@@ -194,6 +217,7 @@ function scanTrack(
 				payloadLength === undefined ||
 				payloadLength.nextByteIndex + payloadLength.value > endByteIndex
 			) {
+				complete = false;
 				break;
 			}
 
@@ -202,10 +226,15 @@ function scanTrack(
 			continue;
 		}
 
+		complete = false;
 		break;
 	}
 
-	return { events: [...events.values()], groupCount: Math.max(1, trackGroups.size) };
+	return {
+		events: [...events.values()],
+		groupCount: Math.max(1, trackGroups.size),
+		complete: complete && sawEndOfTrack && byteIndex === endByteIndex
+	};
 }
 
 function isChunkType(bytes: Uint8Array, byteIndex: number, type: string): boolean {
@@ -218,38 +247,52 @@ function isChunkType(bytes: Uint8Array, byteIndex: number, type: string): boolea
 }
 
 export function scanMidiEvents(fileBytes: ArrayBuffer): ScannedMidiFile | undefined {
+	const bytes = new Uint8Array(fileBytes);
+	if (!isChunkType(bytes, 0, 'MThd')) return undefined;
+
+	const headerLength = readUint32(bytes, 4);
+	const format = readUint16(bytes, 8);
+	const declaredTrackCount = readUint16(bytes, 10);
+	if (
+		headerLength === undefined ||
+		headerLength < 6 ||
+		format === undefined ||
+		declaredTrackCount === undefined ||
+		8 + headerLength > bytes.length
+	) {
+		return undefined;
+	}
+
+	const chunks: ScannedMidiChunk[] = [];
+	let byteIndex = 8 + headerLength;
+	let complete = true;
 	try {
-		const bytes = new Uint8Array(fileBytes);
-		if (!isChunkType(bytes, 0, 'MThd')) return undefined;
+		while (byteIndex < bytes.length) {
+			if (byteIndex + 8 > bytes.length || !isChunkType(bytes, byteIndex, 'MTrk')) {
+				complete = false;
+				break;
+			}
 
-		const headerLength = readUint32(bytes, 4);
-		const format = readUint16(bytes, 8);
-		if (
-			headerLength === undefined ||
-			headerLength < 6 ||
-			format === undefined ||
-			8 + headerLength > bytes.length
-		) {
-			return undefined;
-		}
-
-		const tracks: ScannedMidiChunk[] = [];
-		let byteIndex = 8 + headerLength;
-		while (byteIndex + 8 <= bytes.length) {
 			const chunkLength = readUint32(bytes, byteIndex + 4);
-			if (chunkLength === undefined || byteIndex + 8 + chunkLength > bytes.length) break;
+			if (chunkLength === undefined || byteIndex + 8 + chunkLength > bytes.length) {
+				complete = false;
+				break;
+			}
 
 			const chunkStartByteIndex = byteIndex + 8;
 			const chunkEndByteIndex = chunkStartByteIndex + chunkLength;
-			if (isChunkType(bytes, byteIndex, 'MTrk')) {
-				tracks.push(scanTrack(bytes, chunkStartByteIndex, chunkEndByteIndex));
-			}
+			const chunk = scanTrack(bytes, chunkStartByteIndex, chunkEndByteIndex);
+			chunks.push(chunk);
 			byteIndex = chunkEndByteIndex;
+			// The declared chunk length still gives us a trustworthy boundary even when an event
+			// inside this track is malformed. Preserve later tracks and their diagnostics too.
+			if (!chunk.complete) complete = false;
 		}
-
-		return { chunks: tracks, format };
 	} catch {
-		// The scanner is advisory; MIDI parsing remains the authority for file validity.
-		return undefined;
+		// After a trustworthy header, retain chunks scanned before an unexpected scanner failure.
+		complete = false;
 	}
+
+	if (byteIndex !== bytes.length || chunks.length !== declaredTrackCount) complete = false;
+	return { chunks, format, complete };
 }

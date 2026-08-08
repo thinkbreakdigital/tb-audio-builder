@@ -36,6 +36,7 @@ interface ParsedMidiInput {
 interface ScannedEventAttribution {
 	eventsByParsedTrack: readonly (readonly ScannedEvent[])[];
 	fileLevelEvents: readonly ScannedEvent[];
+	complete: boolean;
 }
 
 function hasMidiHeader(fileBytes: ArrayBuffer): boolean {
@@ -113,7 +114,8 @@ function attributeScannedEvents(
 ): ScannedEventAttribution {
 	const eventsByParsedTrack = midi.tracks.map((): ScannedEvent[] => []);
 	const fileLevelEvents: ScannedEvent[] = [];
-	if (scannedMidiFile === undefined) return { eventsByParsedTrack, fileLevelEvents };
+	if (scannedMidiFile === undefined)
+		return { eventsByParsedTrack, fileLevelEvents, complete: false };
 
 	const totalGroupCount = scannedMidiFile.chunks.reduce(
 		(total, scannedChunk) => total + scannedChunk.groupCount,
@@ -124,25 +126,55 @@ function attributeScannedEvents(
 	if (totalGroupCount !== midi.tracks.length + formatOneShift) {
 		return {
 			eventsByParsedTrack,
-			fileLevelEvents: scannedMidiFile.chunks.flatMap((scannedChunk) => scannedChunk.events)
+			fileLevelEvents: scannedMidiFile.chunks.flatMap((scannedChunk) => scannedChunk.events),
+			complete: false
 		};
 	}
 
+	let complete = scannedMidiFile.complete;
 	let baseTrackIndex = 0;
 	for (const scannedChunk of scannedMidiFile.chunks) {
-		for (const scannedEvent of scannedChunk.events) {
+		const hasOutOfRangeEvent = scannedChunk.events.some((scannedEvent) => {
 			const parsedTrackIndex = baseTrackIndex + scannedEvent.groupIndex - formatOneShift;
-			if (parsedTrackIndex < 0 || parsedTrackIndex >= midi.tracks.length) {
-				fileLevelEvents.push(scannedEvent);
-				continue;
+			const isDroppedConductorEvent =
+				formatOneShift === 1 && baseTrackIndex === 0 && scannedEvent.groupIndex === 0;
+			return (
+				!isDroppedConductorEvent && (parsedTrackIndex < 0 || parsedTrackIndex >= midi.tracks.length)
+			);
+		});
+		if (!scannedChunk.complete || hasOutOfRangeEvent) {
+			fileLevelEvents.push(...scannedChunk.events);
+			complete = false;
+		} else {
+			for (const scannedEvent of scannedChunk.events) {
+				const parsedTrackIndex = baseTrackIndex + scannedEvent.groupIndex - formatOneShift;
+				if (parsedTrackIndex === -1 && formatOneShift === 1 && baseTrackIndex === 0) {
+					fileLevelEvents.push(scannedEvent);
+				} else {
+					eventsByParsedTrack[parsedTrackIndex]?.push(scannedEvent);
+				}
 			}
-
-			eventsByParsedTrack[parsedTrackIndex]?.push(scannedEvent);
 		}
 		baseTrackIndex += scannedChunk.groupCount;
 	}
 
-	return { eventsByParsedTrack, fileLevelEvents };
+	return { eventsByParsedTrack, fileLevelEvents, complete };
+}
+
+function addEventScanIncompleteWarning(
+	warnings: MidiWarningCollector,
+	sourceFilename: string
+): void {
+	warnings.add({
+		sourceFilename,
+		trackName: 'Header',
+		trackIndex: -1,
+		eventType: 'eventScanIncomplete',
+		tick: 0,
+		message: () =>
+			'Could not inspect every MIDI event safely. Re-export this file from your DAW before relying on the unsupported-event warnings.',
+		suggestedAction: 'Re-export the MIDI file from your DAW and import it again.'
+	});
 }
 
 function makeSuggestions(input: {
@@ -208,11 +240,13 @@ export function compileMidiFile(input: {
 
 	const warnings = new MidiWarningCollector();
 	const scannedEventAttribution = attributeScannedEvents(midi, scannedMidiFile);
+	if (!scannedEventAttribution.complete) addEventScanIncompleteWarning(warnings, filename);
 	const normalized = normalizeMidi({
 		midi,
 		sourceFilename: filename,
 		songId,
 		scannedEventsByTrack: scannedEventAttribution.eventsByParsedTrack,
+		inspectionComplete: scannedEventAttribution.complete,
 		warnings
 	});
 

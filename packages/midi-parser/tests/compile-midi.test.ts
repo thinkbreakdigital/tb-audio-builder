@@ -21,6 +21,11 @@ function expectMidiImportError(
 	expect(error.message).toMatch(causePattern);
 }
 
+function appendTrailingByte(fileBytes: ArrayBuffer): ArrayBuffer {
+	const bytes = new Uint8Array(fileBytes);
+	return new Uint8Array([...bytes, 0]).buffer;
+}
+
 describe('compileMidiFile', () => {
 	it('produces one CompiledTrack per source track with source names preserved', () => {
 		const fileBytes = buildMidiFixture({
@@ -34,6 +39,9 @@ describe('compileMidiFile', () => {
 
 		expect(result.song.tracks).toHaveLength(2);
 		expect(result.song.tracks.map((track) => track.sourceTrackName)).toEqual(['Lead', 'Bass']);
+		expect(result.warnings.some((warning) => warning.eventType === 'eventScanIncomplete')).toBe(
+			false
+		);
 	});
 
 	it('round-trips note ticks, durations, and midi notes exactly, and keeps velocity in 0..1', () => {
@@ -263,5 +271,37 @@ describe('compileMidiFile', () => {
 		expect(first.song.tracks[0]?.id).toBeTruthy();
 		expect(second.song.tracks[0]?.id).toBeTruthy();
 		expect(first.song.tracks[0]?.id).not.toBe(second.song.tracks[0]?.id);
+	});
+
+	it('keeps apparently empty parsed tracks and prioritizes one actionable warning when event inspection is incomplete', () => {
+		const fileBytes = appendTrailingByte(
+			buildMidiFixture({
+				tracks: [
+					{
+						name: 'Lead',
+						notes: [{ tick: 0, durationTicks: 10, midiNote: 60, velocity: 1 }]
+					},
+					{ name: 'Potentially empty' }
+				]
+			})
+		);
+
+		const result = compileMidiFile({ fileBytes, filename: 'trailing-bytes.mid' });
+		const inspectionWarnings = result.warnings.filter(
+			(warning) => warning.eventType === 'eventScanIncomplete'
+		);
+
+		expect(result.song.tracks.map((track) => track.sourceTrackName)).toEqual([
+			'Lead',
+			'Potentially empty'
+		]);
+		expect(inspectionWarnings).toHaveLength(1);
+		expect(result.warnings[0]).toMatchObject({
+			eventType: 'eventScanIncomplete',
+			trackName: 'Header',
+			trackIndex: -1,
+			suggestedAction: 'Re-export the MIDI file from your DAW and import it again.'
+		});
+		expect(result.warnings.some((warning) => warning.eventType === 'emptyTrack')).toBe(false);
 	});
 });
