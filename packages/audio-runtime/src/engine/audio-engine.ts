@@ -32,8 +32,13 @@ import type { AudioChannelDefinition, ChannelMixSettings, ChannelRole } from '..
 import type { InstrumentDefinition } from '../types/instrument.js';
 import type { BuilderProject, CompressorSettings } from '../types/project.js';
 import type { CompiledSong, PitchBendEvent } from '../types/song.js';
-import { findFirstIndexAtOrAfter, type NumericKeyOf } from '../util/binary-search.js';
+import {
+	findFirstIndexAtOrAfter,
+	findLastIndexAtOrBefore,
+	type NumericKeyOf
+} from '../util/binary-search.js';
 import { createAudioContextController } from './audio-context.js';
+import type { AudioContextStatus } from './audio-context.js';
 import { buildEventTimeline } from './event-timeline.js';
 import type { EventTimeline } from './event-timeline.js';
 import type { DispatchNote } from './scheduler.js';
@@ -45,6 +50,12 @@ import { createVoiceManager } from './voice-manager.js';
 
 export interface AudioEngine {
 	initialize(): Promise<void>;
+	resumeAudioContext(): Promise<void>;
+	suspendAudioContext(): Promise<void>;
+	readonly audioContextStatus: AudioContextStatus;
+	onAudioContextStatusChange(listener: (status: AudioContextStatus) => void): () => void;
+	readonly lastPlaybackError: PlaybackError | null;
+	onPlaybackError(listener: (error: PlaybackError) => void): () => void;
 	play(): void;
 	pause(): void;
 	stop(): void;
@@ -65,6 +76,7 @@ export interface AudioEngine {
 	setChannelInstrument(channelId: string, instrument: InstrumentDefinition | null): void;
 
 	triggerPreview(channelId: string, midiNote: number, velocity: number): void;
+	beginPreview(channelId: string, midiNote: number, velocity: number): PreviewHandle | null;
 
 	loadProject(input: {
 		song: CompiledSong;
@@ -83,6 +95,11 @@ export interface AudioEngine {
 	readMasterLevel(): number;
 
 	dispose(): void;
+}
+
+export interface PreviewHandle {
+	release(): void;
+	stop(): void;
 }
 
 const pitchBendTickOf: NumericKeyOf<PitchBendEvent> = (event) => event.tick;
@@ -152,6 +169,8 @@ export function createAudioEngine(options?: {
 	const channelBuses = new Map<string, ChannelBus>();
 	let transport: Transport | null = null;
 	let disposed = false;
+	let lastPlaybackError: PlaybackError | null = null;
+	const playbackErrorListeners = new Set<(error: PlaybackError) => void>();
 
 	function ensureNotDisposed(action: string): void {
 		if (disposed) {
@@ -218,11 +237,18 @@ export function createAudioEngine(options?: {
 
 		const firstIndex = findFirstIndexAtOrAfter(bends, startTick, pitchBendTickOf);
 		const endIndex = findFirstIndexAtOrAfter(bends, endTick, pitchBendTickOf);
-		if (endIndex <= firstIndex) return undefined;
+		const heldIndex = findLastIndexAtOrBefore(bends, startTick, pitchBendTickOf);
+		if (endIndex <= firstIndex && heldIndex < 0) return undefined;
 
 		const effectiveMultiplier = clamp(tempoMultiplier, MIN_TEMPO_MULTIPLIER, MAX_TEMPO_MULTIPLIER);
 		const noteStartSongSeconds = tickToSeconds(tempoMap, startTick);
 		const points: PitchBendPoint[] = [];
+		if (heldIndex >= 0 && (bends[heldIndex] as PitchBendEvent).tick < startTick) {
+			points.push({
+				atSeconds: startAtSeconds,
+				value: (bends[heldIndex] as PitchBendEvent).value
+			});
+		}
 		for (let index = firstIndex; index < endIndex; index += 1) {
 			const bend = bends[index] as PitchBendEvent;
 			points.push({
@@ -244,6 +270,34 @@ export function createAudioEngine(options?: {
 		const chokeGroup = resolveChokeGroup(instrument);
 		if (chokeGroup === null) return;
 		voiceManager.stopChokeGroup(chokeGroup, startAtSeconds);
+	}
+
+	function startPreviewVoice(
+		channelId: string,
+		midiNote: number,
+		velocity: number,
+		releaseAtSeconds: number
+	) {
+		const channel = requireChannel(channelId, 'triggerPreview');
+		const context = controller.context;
+		const bus = channelBuses.get(channelId);
+		if (context === null || bus === undefined || channel.instrument === null) return null;
+
+		const startAtSeconds = context.currentTime + PREVIEW_START_OFFSET_SECONDS;
+		chokeGroupBefore(channel.instrument, startAtSeconds);
+		return voiceManager.start(
+			{
+				channelId,
+				instrument: channel.instrument,
+				midiNote,
+				velocity,
+				startAtSeconds,
+				releaseAtSeconds,
+				destination: bus.input,
+				context
+			},
+			resolveVoicePriority(channel.instrument)
+		);
 	}
 
 	/**
@@ -326,7 +380,11 @@ export function createAudioEngine(options?: {
 			timeline,
 			voiceManager,
 			dispatch,
-			settings: options?.schedulerSettings
+			settings: options?.schedulerSettings,
+			onError(error) {
+				lastPlaybackError = error;
+				for (const listener of playbackErrorListeners) listener(error);
+			}
 		});
 		transport.setTempoMultiplier(tempoMultiplier);
 		applyLoopToTransport();
@@ -340,7 +398,39 @@ export function createAudioEngine(options?: {
 		async initialize(): Promise<void> {
 			ensureNotDisposed('initialize()');
 			await controller.initialize();
-			rebuildGraph();
+			if (transport === null && tempoMap !== null && timeline !== null) rebuildGraph();
+		},
+
+		async resumeAudioContext(): Promise<void> {
+			ensureNotDisposed('resumeAudioContext()');
+			await controller.resume();
+			if (transport === null && tempoMap !== null && timeline !== null) rebuildGraph();
+		},
+
+		async suspendAudioContext(): Promise<void> {
+			ensureNotDisposed('suspendAudioContext()');
+			await controller.suspend();
+		},
+
+		get audioContextStatus(): AudioContextStatus {
+			ensureNotDisposed('read audioContextStatus');
+			return controller.status;
+		},
+
+		onAudioContextStatusChange(listener: (status: AudioContextStatus) => void): () => void {
+			ensureNotDisposed('onAudioContextStatusChange()');
+			return controller.onStatusChange(listener);
+		},
+
+		get lastPlaybackError(): PlaybackError | null {
+			ensureNotDisposed('read lastPlaybackError');
+			return lastPlaybackError;
+		},
+
+		onPlaybackError(listener: (error: PlaybackError) => void): () => void {
+			ensureNotDisposed('onPlaybackError()');
+			playbackErrorListeners.add(listener);
+			return () => playbackErrorListeners.delete(listener);
 		},
 
 		loadProject(input): void {
@@ -501,28 +591,27 @@ export function createAudioEngine(options?: {
 
 		triggerPreview(channelId: string, midiNote: number, velocity: number): void {
 			ensureNotDisposed('triggerPreview()');
-			const channel = requireChannel(channelId, 'triggerPreview');
-			const context = controller.context;
-			const bus = channelBuses.get(channelId);
-			// Before initialize() there is nothing to audition; previewing is a no-op rather than an
-			// error, unlike play() (§4.9 rule 5).
-			if (context === null || bus === undefined || channel.instrument === null) return;
+			const startAtSeconds = nowSeconds() + PREVIEW_START_OFFSET_SECONDS;
+			startPreviewVoice(channelId, midiNote, velocity, startAtSeconds + PREVIEW_RELEASE_SECONDS);
+		},
 
-			const startAtSeconds = context.currentTime + PREVIEW_START_OFFSET_SECONDS;
-			chokeGroupBefore(channel.instrument, startAtSeconds);
-			voiceManager.start(
-				{
-					channelId,
-					instrument: channel.instrument,
-					midiNote,
-					velocity,
-					startAtSeconds,
-					releaseAtSeconds: startAtSeconds + PREVIEW_RELEASE_SECONDS,
-					destination: bus.input,
-					context
+		beginPreview(channelId: string, midiNote: number, velocity: number): PreviewHandle | null {
+			ensureNotDisposed('beginPreview()');
+			const voice = startPreviewVoice(channelId, midiNote, velocity, Infinity);
+			if (voice === null) return null;
+			let finished = false;
+			return {
+				release(): void {
+					if (finished) return;
+					finished = true;
+					voice.release(nowSeconds());
 				},
-				resolveVoicePriority(channel.instrument)
-			);
+				stop(): void {
+					if (finished) return;
+					finished = true;
+					voice.stop(nowSeconds());
+				}
+			};
 		},
 
 		get status(): TransportStatus {
@@ -571,6 +660,7 @@ export function createAudioEngine(options?: {
 			// Calling dispose() twice is safe; every other method throws afterwards.
 			if (disposed) return;
 			disposed = true;
+			playbackErrorListeners.clear();
 			teardownGraph();
 			// Teardown is synchronous and best-effort: a failing close must not throw from here.
 			void controller.close().catch(() => undefined);

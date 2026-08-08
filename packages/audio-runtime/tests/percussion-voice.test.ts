@@ -496,6 +496,19 @@ describe('createPercussionVoiceFactory — lifecycle', () => {
 		expect(heldLong.oscillator?.stoppedAtSeconds).toBe(oneShot.oscillator?.stoppedAtSeconds);
 	});
 
+	it('keeps the longest legal noise envelope inside the shared buffer duration', () => {
+		const harness = startVoice({
+			instrument: makeInstrument({
+				oscillatorLayer: { enabled: false },
+				noiseLayer: { attackSeconds: 0.5, decaySeconds: 2, releaseSeconds: 2 }
+			})
+		});
+		const bufferDurationSeconds = (harness.noiseSource?.buffer as { duration: number }).duration;
+		const playbackDurationSeconds =
+			(harness.noiseSource?.stoppedAtSeconds as number) - START_AT_SECONDS;
+		expect(bufferDurationSeconds).toBeGreaterThan(playbackDurationSeconds);
+	});
+
 	it('brings the tail forward on release() and never pushes it back', () => {
 		const harness = startVoice({ instrument: makeInstrument() });
 

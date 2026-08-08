@@ -47,6 +47,7 @@ export function createTransport(input: {
 	voiceManager: VoiceManager;
 	dispatch: DispatchNote;
 	settings?: { lookaheadMs: number; intervalMs: number };
+	onError?: (error: PlaybackError) => void;
 }): Transport {
 	const { context, tempoMap, timeline, voiceManager, dispatch } = input;
 	const settings = input.settings ?? DEFAULT_SCHEDULER_SETTINGS;
@@ -56,12 +57,15 @@ export function createTransport(input: {
 	// The position while not playing. While playing, position comes from the context clock instead.
 	let storedTick = 0;
 	let disposed = false;
+	let completedNaturally = false;
 
-	const origin: PlaybackOrigin = {
+	const audibleOrigin: PlaybackOrigin = {
 		originTick: 0,
 		originContextSeconds: context.currentTime,
 		tempoMultiplier: DEFAULT_TEMPO_MULTIPLIER
 	};
+	const schedulerOrigin: PlaybackOrigin = { ...audibleOrigin };
+	const pendingAudibleOrigins: PlaybackOrigin[] = [];
 	// Defaults to the whole song so enabling a loop before a region is chosen is meaningful.
 	const loop: LoopRegion = { enabled: false, startTick: 0, endTick: durationTicks };
 
@@ -69,10 +73,25 @@ export function createTransport(input: {
 		context,
 		tempoMap,
 		timeline,
-		origin,
+		origin: schedulerOrigin,
 		loop,
 		dispatch,
-		settings
+		settings,
+		onLoopWrap(nextOrigin) {
+			pendingAudibleOrigins.push({ ...nextOrigin });
+		},
+		onNaturalEnd() {
+			storedTick = durationTicks;
+			completedNaturally = true;
+			status = 'stopped';
+			scheduler.stop();
+		},
+		onError(error) {
+			storedTick = clamp(readPositionTicks(), 0, durationTicks);
+			status = 'paused';
+			voiceManager.stopAll(context.currentTime);
+			input.onError?.(error);
+		}
 	});
 
 	function ensureNotDisposed(action: string): void {
@@ -82,21 +101,31 @@ export function createTransport(input: {
 	}
 
 	function readPositionTicks(): number {
+		while (
+			pendingAudibleOrigins.length > 0 &&
+			(pendingAudibleOrigins[0] as PlaybackOrigin).originContextSeconds <= context.currentTime
+		) {
+			Object.assign(audibleOrigin, pendingAudibleOrigins.shift() as PlaybackOrigin);
+		}
 		return status === 'playing'
-			? tickForContextSeconds(tempoMap, origin, context.currentTime)
+			? tickForContextSeconds(tempoMap, audibleOrigin, context.currentTime)
 			: storedTick;
 	}
 
 	/** The tick now playing becomes the new origin, anchored at the current context time. */
 	function rebaseOriginTo(tick: number): void {
-		origin.originTick = tick;
-		origin.originContextSeconds = context.currentTime;
+		pendingAudibleOrigins.length = 0;
+		for (const origin of [audibleOrigin, schedulerOrigin]) {
+			origin.originTick = tick;
+			origin.originContextSeconds = context.currentTime;
+		}
 	}
 
 	function seekToTick(tick: number): void {
 		ensureNotDisposed('seekToTick()');
 		const target = clamp(tick, 0, durationTicks);
 		storedTick = target;
+		completedNaturally = false;
 		voiceManager.stopAll(context.currentTime);
 		rebaseOriginTo(target);
 		scheduler.resetCursorToTick(target);
@@ -122,6 +151,10 @@ export function createTransport(input: {
 		play(): void {
 			ensureNotDisposed('play()');
 			if (status === 'playing') return;
+			if (completedNaturally) {
+				storedTick = 0;
+				completedNaturally = false;
+			}
 			// Always resumes from the stored tick: stop() stores 0, so "play from stopped starts at
 			// tick 0" and "seek then play starts at the seeked tick" are the same rule.
 			rebaseOriginTo(storedTick);
@@ -142,6 +175,7 @@ export function createTransport(input: {
 		stop(): void {
 			ensureNotDisposed('stop()');
 			storedTick = 0;
+			completedNaturally = false;
 			scheduler.stop();
 			scheduler.resetCursorToTick(0);
 			status = 'stopped';
@@ -165,17 +199,39 @@ export function createTransport(input: {
 						`0 <= startTick < endTick <= durationTicks (${durationTicks}).`
 				);
 			}
+			const wasPlaying = status === 'playing';
+			const currentTick = clamp(readPositionTicks(), 0, durationTicks);
+			if (wasPlaying) {
+				scheduler.stop();
+				voiceManager.stopAll(context.currentTime);
+			}
 			// Mutated in place: the scheduler holds this same object and reads it each window.
 			loop.enabled = enabled;
 			loop.startTick = startTick;
 			loop.endTick = endTick;
+			if (wasPlaying) {
+				rebaseOriginTo(currentTick);
+				scheduler.resetCursorToTick(currentTick);
+				scheduler.start();
+			}
 		},
 
 		setTempoMultiplier(multiplier: number): void {
 			ensureNotDisposed('setTempoMultiplier()');
-			// Rebase first, against the OLD multiplier — otherwise the audible position jumps.
-			rebaseOriginTo(readPositionTicks());
-			origin.tempoMultiplier = clamp(multiplier, MIN_TEMPO_MULTIPLIER, MAX_TEMPO_MULTIPLIER);
+			// Anything already inside the look-ahead was timed with the old multiplier. Cancel it and
+			// refill from the unchanged audible position so the new tempo takes effect coherently.
+			const wasPlaying = status === 'playing';
+			const currentTick = clamp(readPositionTicks(), 0, durationTicks);
+			if (wasPlaying) {
+				scheduler.stop();
+				voiceManager.stopAll(context.currentTime);
+			}
+			rebaseOriginTo(currentTick);
+			const nextMultiplier = clamp(multiplier, MIN_TEMPO_MULTIPLIER, MAX_TEMPO_MULTIPLIER);
+			audibleOrigin.tempoMultiplier = nextMultiplier;
+			schedulerOrigin.tempoMultiplier = nextMultiplier;
+			scheduler.resetCursorToTick(currentTick);
+			if (wasPlaying) scheduler.start();
 		},
 
 		dispose(): void {

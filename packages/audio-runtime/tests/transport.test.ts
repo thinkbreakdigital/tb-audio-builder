@@ -269,6 +269,80 @@ describe('createTransport', () => {
 		).toThrow(PlaybackError);
 	});
 
+	it('keeps the audible position in the current pass when look-ahead schedules a future loop wrap', () => {
+		const harness = setupTransport({
+			durationTicks: 7680,
+			channels: [{ notes: notesEvery({ count: 8, stepTicks: 960 }) }]
+		});
+		harness.transport.setLoop({ enabled: true, startTick: 0, endTick: 7680 });
+		harness.transport.play();
+
+		// The 100ms window now crosses the 8s boundary, while the audible clock is still at 7.925s.
+		runFor(harness.fake, 7.925);
+		expect(harness.transport.positionTicks).toBeGreaterThan(7500);
+		expect(harness.transport.positionTicks).toBeLessThan(7680);
+
+		harness.transport.pause();
+		const pausedTick = harness.transport.positionTicks;
+		harness.transport.play();
+		expect(harness.transport.positionTicks).toBeCloseTo(pausedTick, 6);
+	});
+
+	it('stops its interval at natural completion, holds the end position, and restarts at zero', () => {
+		const harness = setupTransport({
+			durationTicks: 960,
+			channels: [{ notes: [{ tick: 0, durationTicks: 960 }] }]
+		});
+		harness.transport.play();
+		runFor(harness.fake, 1.1);
+
+		expect(harness.transport.status).toBe('stopped');
+		expect(harness.transport.positionTicks).toBe(960);
+		expect(vi.getTimerCount()).toBe(0);
+
+		harness.transport.play();
+		expect(harness.transport.status).toBe('playing');
+		expect(harness.transport.positionTicks).toBeCloseTo(0, 6);
+	});
+
+	it('reports an interval scheduling error and stops the failing scheduler', () => {
+		const fake = createFakeAudioContext();
+		const built = buildSong({
+			durationTicks: 1,
+			channels: [{ notes: [{ tick: 0, durationTicks: 1 }] }]
+		});
+		const tempoMap = createTempoMap({
+			tempoChanges: built.song.tempoChanges,
+			ticksPerQuarterNote: built.song.ticksPerQuarterNote,
+			durationTicks: built.song.durationTicks
+		});
+		const timeline = buildEventTimeline({ song: built.song, channels: built.channels });
+		const pitched = createSilentVoiceFactory('pitched');
+		const registry = createVoiceFactoryRegistry();
+		registry.register(pitched.factory);
+		const voiceManager = createVoiceManager({
+			registry,
+			limits: { maxTotalVoices: 32, maxVoicesPerChannel: 8 }
+		});
+		let reported: PlaybackError | null = null;
+		const transport = createTransport({
+			context: asBaseAudioContext(fake),
+			tempoMap,
+			timeline,
+			voiceManager,
+			dispatch: () => undefined,
+			onError: (error) => {
+				reported = error;
+			}
+		});
+		transport.setLoop({ enabled: true, startTick: 0, endTick: 1 });
+		transport.play();
+
+		expect(reported).toBeInstanceOf(PlaybackError);
+		expect(transport.status).toBe('paused');
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
 	it('dispose leaves no interval running and refuses further calls', () => {
 		const { transport, fake } = setupTransport({
 			channels: [{ notes: notesEvery({ count: 8, stepTicks: 480 }) }]
@@ -465,5 +539,33 @@ describe('createAudioEngine', () => {
 		const voice = harness.pitchedVoices[0] as SilentVoice;
 		expect(voice.startedAtSeconds).toBeCloseTo(3.005, 9);
 		expect(voice.request.releaseAtSeconds).toBeCloseTo(4.005, 9);
+	});
+
+	it('beginPreview holds a pitched voice until the returned handle releases it', async () => {
+		const harness = setupEngine();
+		harness.engine.loadProject(buildFourTrackFixture());
+		await harness.engine.initialize();
+		const handle = harness.engine.beginPreview('ch-1', 64, 0.9);
+		expect(handle).not.toBeNull();
+		expect(harness.pitchedVoices[0]?.request.releaseAtSeconds).toBe(Infinity);
+
+		harness.fake.advanceTimeTo(0.5);
+		handle?.release();
+		expect(harness.pitchedVoices[0]?.releasedAtSeconds).toBe(0.5);
+	});
+
+	it('repeated initialize and suspended-context recovery reuse the existing graph', async () => {
+		const harness = setupEngine();
+		harness.engine.loadProject(buildFourTrackFixture());
+		await harness.engine.initialize();
+		const createdNodeCount = harness.fake.createdNodes.length;
+
+		await harness.engine.initialize();
+		expect(harness.fake.createdNodes).toHaveLength(createdNodeCount);
+		harness.fake.setState('suspended');
+		expect(harness.engine.audioContextStatus).toBe('suspended');
+		await harness.engine.resumeAudioContext();
+		expect(harness.engine.audioContextStatus).toBe('running');
+		expect(harness.fake.createdNodes).toHaveLength(createdNodeCount);
 	});
 });

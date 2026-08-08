@@ -52,6 +52,13 @@ class SilentVoiceImpl implements SilentVoice {
 		this.releasedAtSeconds = atSeconds;
 	}
 
+	steal(atSeconds: number): void {
+		this.releasing = true;
+		this.releasedAtSeconds = atSeconds;
+		this.stoppedAtSeconds = atSeconds;
+		this.end();
+	}
+
 	stop(atSeconds: number): void {
 		this.stoppedAtSeconds = atSeconds;
 		this.end();

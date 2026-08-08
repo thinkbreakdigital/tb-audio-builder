@@ -98,8 +98,9 @@ export function createAudioContextController(options?: {
 	}
 
 	function initialize(): Promise<void> {
-		// A live or terminally-closed context: nothing more to do.
-		if (status === 'running' || status === 'suspended' || status === 'closed') {
+		// A suspended context is deliberately not a no-op: a later user gesture must be able to
+		// recover audio after the browser or operating system interrupted it.
+		if (status === 'running' || status === 'closed') {
 			return Promise.resolve();
 		}
 		if (pendingInitialize !== null) return pendingInitialize;
@@ -112,14 +113,24 @@ export function createAudioContextController(options?: {
 
 	async function suspend(): Promise<void> {
 		if (context === null) return;
-		await asManagedContext(context).suspend();
-		setStatus(mapContextState(context.state));
+		try {
+			await asManagedContext(context).suspend();
+			setStatus(mapContextState(context.state));
+		} catch (cause) {
+			setStatus('failed');
+			throw new AudioInitializationError('AudioContextController.suspend() failed.', { cause });
+		}
 	}
 
 	async function resume(): Promise<void> {
-		if (context === null) return;
-		await asManagedContext(context).resume();
-		setStatus(mapContextState(context.state));
+		if (context === null) return initialize();
+		try {
+			await asManagedContext(context).resume();
+			setStatus(mapContextState(context.state));
+		} catch (cause) {
+			setStatus('failed');
+			throw new AudioInitializationError('AudioContextController.resume() failed.', { cause });
+		}
 	}
 
 	async function close(): Promise<void> {

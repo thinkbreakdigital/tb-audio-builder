@@ -16,6 +16,8 @@ export interface Voice {
 	readonly isReleasing: boolean;
 	/** Schedule the release phase to begin at this audio-context time. */
 	release(atSeconds: number): void;
+	/** Replace this voice with a short click-safe tail; unlike release(), stealing is resource-bounded. */
+	steal(atSeconds: number): void;
 	/** Hard-stop and disconnect immediately, ignoring the release envelope. */
 	stop(atSeconds: number): void;
 	/** Called by the voice when its tail has finished; the manager reclaims it. */

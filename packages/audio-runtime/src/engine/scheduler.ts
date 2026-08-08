@@ -80,6 +80,9 @@ export function createScheduler(input: {
 	loop: LoopRegion; // shared mutable object, owned by the transport
 	dispatch: DispatchNote;
 	settings?: { lookaheadMs: number; intervalMs: number };
+	onLoopWrap?: (origin: Readonly<PlaybackOrigin>) => void;
+	onNaturalEnd?: () => void;
+	onError?: (error: PlaybackError) => void;
 }): Scheduler {
 	const { context, tempoMap, timeline, origin, loop, dispatch } = input;
 	const settings = input.settings ?? DEFAULT_SCHEDULER_SETTINGS;
@@ -87,6 +90,7 @@ export function createScheduler(input: {
 	let intervalHandle: ReturnType<typeof setInterval> | null = null;
 	let cursor = 0;
 	let disposed = false;
+	let naturalEndReported = false;
 
 	function ensureNotDisposed(action: string): void {
 		if (disposed) {
@@ -137,6 +141,7 @@ export function createScheduler(input: {
 		origin.originTick = loop.startTick;
 		origin.originContextSeconds = loopEndContextSeconds;
 		cursor = findFirstEventIndexAtOrAfter(timeline, loop.startTick);
+		input.onLoopWrap?.({ ...origin });
 	}
 
 	function runOnce(): void {
@@ -165,6 +170,39 @@ export function createScheduler(input: {
 		}
 
 		dispatchUpTo(windowEndTick, loopIsActive() ? loop.endTick : null);
+
+		if (
+			!loopIsActive() &&
+			!naturalEndReported &&
+			cursor >= timeline.events.length &&
+			tickForContextSeconds(tempoMap, origin, context.currentTime) >= tempoMap.durationTicks
+		) {
+			naturalEndReported = true;
+			if (intervalHandle !== null) {
+				clearInterval(intervalHandle);
+				intervalHandle = null;
+			}
+			input.onNaturalEnd?.();
+		}
+	}
+
+	function runIntervalTick(): void {
+		try {
+			runOnce();
+		} catch (cause) {
+			const error =
+				cause instanceof PlaybackError
+					? cause
+					: new PlaybackError('Scheduler interval failed while filling the look-ahead window.', {
+							cause
+						});
+			if (intervalHandle !== null) {
+				clearInterval(intervalHandle);
+				intervalHandle = null;
+			}
+			if (input.onError === undefined) throw error;
+			input.onError(error);
+		}
 	}
 
 	return {
@@ -176,9 +214,9 @@ export function createScheduler(input: {
 			ensureNotDisposed('start()');
 			// Exactly one interval: starting an already-running scheduler is a no-op.
 			if (intervalHandle !== null) return;
-			intervalHandle = setInterval(runOnce, settings.intervalMs);
+			intervalHandle = setInterval(runIntervalTick, settings.intervalMs);
 			// Fill the first window now rather than waiting a full interval for it.
-			runOnce();
+			runIntervalTick();
 		},
 
 		stop(): void {
@@ -192,6 +230,7 @@ export function createScheduler(input: {
 		resetCursorToTick(tick: number): void {
 			ensureNotDisposed('resetCursorToTick()');
 			cursor = findFirstEventIndexAtOrAfter(timeline, tick);
+			naturalEndReported = false;
 		},
 
 		dispose(): void {

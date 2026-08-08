@@ -18,7 +18,12 @@ import { CHOKE_STOP_RAMP_SECONDS } from '../constants.js';
 import { PlaybackError } from '../errors.js';
 import type { PitchedInstrumentDefinition } from '../types/instrument.js';
 import { midiNoteToFrequencyHz, pitchBendToSemitones, velocityToGain } from './conversions.js';
-import { applyAttackDecaySustain, applyRelease, MIN_ENVELOPE_RAMP_SECONDS } from './envelope.js';
+import {
+	adsrLevelAtSeconds,
+	applyAttackDecaySustain,
+	applyRelease,
+	MIN_ENVELOPE_RAMP_SECONDS
+} from './envelope.js';
 import type { Voice, VoiceFactory, VoicePriority, VoiceStartRequest } from './voice.js';
 
 const SEMITONES_PER_OCTAVE = 12;
@@ -37,6 +42,7 @@ class PitchedVoiceImpl implements Voice {
 	readonly priority: VoicePriority;
 
 	private readonly instrument: PitchedInstrumentDefinition;
+	private readonly peakValue: number;
 	private oscillator: OscillatorNode | null;
 	private envelopeGain: GainNode | null;
 	private filter: BiquadFilterNode | null = null;
@@ -56,6 +62,7 @@ class PitchedVoiceImpl implements Voice {
 		this.startedAtSeconds = startAtSeconds;
 		this.priority = request.priority ?? 'normal';
 		this.instrument = instrument;
+		this.peakValue = velocityToGain(request.velocity);
 
 		const oscillator = context.createOscillator();
 		this.oscillator = oscillator;
@@ -78,7 +85,7 @@ class PitchedVoiceImpl implements Voice {
 		applyAttackDecaySustain({
 			param: envelopeGain.gain,
 			startAtSeconds,
-			peakValue: velocityToGain(request.velocity),
+			peakValue: this.peakValue,
 			settings: instrument.amplitudeEnvelope
 		});
 
@@ -123,10 +130,7 @@ class PitchedVoiceImpl implements Voice {
 		// Scheduling the whole note up front, release included, is what lets it survive a scheduler
 		// window boundary without ever being revisited.
 		if (Number.isFinite(request.releaseAtSeconds)) {
-			this.scheduleRelease(
-				request.releaseAtSeconds,
-				velocityToGain(request.velocity) * instrument.amplitudeEnvelope.sustainLevel
-			);
+			this.scheduleRelease(request.releaseAtSeconds);
 		}
 
 		this.applyPitchBend(request);
@@ -142,6 +146,10 @@ class PitchedVoiceImpl implements Voice {
 		this.scheduleRelease(atSeconds);
 	}
 
+	steal(atSeconds: number): void {
+		this.stop(atSeconds);
+	}
+
 	stop(atSeconds: number): void {
 		const envelopeGain = this.envelopeGain;
 		const oscillator = this.oscillator;
@@ -149,7 +157,12 @@ class PitchedVoiceImpl implements Voice {
 
 		// A hard cut still gets a short ramp — stopping an oscillator mid-cycle at full gain clicks.
 		const gain = envelopeGain.gain;
-		const currentValue = gain.value;
+		const currentValue = adsrLevelAtSeconds({
+			startAtSeconds: this.startedAtSeconds,
+			peakValue: this.peakValue,
+			settings: this.instrument.amplitudeEnvelope,
+			atSeconds
+		});
 		gain.cancelScheduledValues(atSeconds);
 		gain.setValueAtTime(currentValue, atSeconds);
 		gain.linearRampToValueAtTime(0, atSeconds + CHOKE_STOP_RAMP_SECONDS);
@@ -171,7 +184,7 @@ class PitchedVoiceImpl implements Voice {
 		this.disconnectNodes();
 	}
 
-	private scheduleRelease(atSeconds: number, fromValue?: number): void {
+	private scheduleRelease(atSeconds: number): void {
 		const envelopeGain = this.envelopeGain;
 		const oscillator = this.oscillator;
 		if (envelopeGain === null || oscillator === null) return;
@@ -181,7 +194,12 @@ class PitchedVoiceImpl implements Voice {
 			param: envelopeGain.gain,
 			releaseAtSeconds: atSeconds,
 			settings: this.instrument.amplitudeEnvelope,
-			fromValue
+			fromValue: adsrLevelAtSeconds({
+				startAtSeconds: this.startedAtSeconds,
+				peakValue: this.peakValue,
+				settings: this.instrument.amplitudeEnvelope,
+				atSeconds
+			})
 		});
 		// Re-stopping an already-scheduled oscillator is legal; the latest call wins.
 		const stopAtSeconds = this.tailEndSeconds + OSCILLATOR_TAIL_MARGIN_SECONDS;

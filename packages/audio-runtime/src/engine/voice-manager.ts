@@ -21,6 +21,7 @@ export interface VoiceManagerLimits {
 }
 
 export interface VoiceManager {
+	/** Every owned voice that may still sound, including release and bounded-steal tails. */
 	readonly activeVoiceCount: number;
 	/**
 	 * Deliberate extension beyond spec §4.7's literal `VoiceManager` interface: the spec's rule 4
@@ -43,6 +44,9 @@ interface VoiceRecord {
 	readonly startedAtSeconds: number;
 	readonly sequence: number;
 	readonly chokeGroup: string | null;
+	readonly midiNote: number;
+	readonly velocity: number;
+	boundedTail: boolean;
 }
 
 /** Oldest by `startedAtSeconds`, ties broken by `sequence` — the deterministic ordering rule. */
@@ -60,6 +64,35 @@ function oldestOf(records: readonly VoiceRecord[]): VoiceRecord | undefined {
 	return best;
 }
 
+function deterministicEarlier(a: VoiceRecord, b: VoiceRecord): boolean {
+	return (
+		a.startedAtSeconds < b.startedAtSeconds ||
+		(a.startedAtSeconds === b.startedAtSeconds && a.sequence < b.sequence)
+	);
+}
+
+function channelVictim(
+	records: readonly VoiceRecord[],
+	instrument: InstrumentDefinition
+): VoiceRecord | undefined {
+	if (instrument.kind !== 'pitched' || instrument.voice.stealMode === 'oldest') {
+		return oldestOf(records);
+	}
+
+	let best: VoiceRecord | undefined;
+	for (const record of records) {
+		if (best === undefined) {
+			best = record;
+			continue;
+		}
+		const value = instrument.voice.stealMode === 'quietest' ? record.velocity : record.midiNote;
+		const bestValue = instrument.voice.stealMode === 'quietest' ? best.velocity : best.midiNote;
+		if (value < bestValue || (value === bestValue && deterministicEarlier(record, best)))
+			best = record;
+	}
+	return best;
+}
+
 export function createVoiceManager(input: {
 	registry: ReturnType<typeof createVoiceFactoryRegistry>;
 	limits: VoiceManagerLimits;
@@ -68,11 +101,12 @@ export function createVoiceManager(input: {
 	const { registry, maxVoicesPerChannelOverride } = input;
 	let limits = input.limits;
 
-	// Two tiers (§4.7 rule 1). `activeRecords` counts toward the per-channel and global limits.
+	// Two tiers (§4.7 rule 1). `activeRecords` counts toward new-voice allocation limits.
 	// `releasingRecords` holds voices that have been released — by a steal, `releaseChannel`, or
 	// `releaseAll` — but have not yet reported `onEnded`: they no longer occupy an allocation slot,
 	// but the manager still owns them, so a hard stop (`stopAll`, `stopChokeGroup`, `dispose`) still
-	// reaches their tail. A voice belongs to at most one tier at a time.
+	// reaches their tail. Both tiers count as live for diagnostics; a voice belongs to at most one
+	// tier at a time.
 	const activeRecords = new Set<VoiceRecord>();
 	const releasingRecords = new Set<VoiceRecord>();
 	let droppedVoiceCount = 0;
@@ -105,11 +139,12 @@ export function createVoiceManager(input: {
 		}
 	}
 
-	/** Steals never `stop()` — that fades the voice instead of clicking it (kickoff §16). */
+	/** A bounded steal uses the voice's short click-safe tail, never its user-editable release. */
 	function steal(record: VoiceRecord, atSeconds: number): void {
 		activeRecords.delete(record);
 		releasingRecords.add(record);
-		record.voice.release(atSeconds);
+		record.boundedTail = true;
+		record.voice.steal(atSeconds);
 	}
 
 	function start(request: VoiceStartRequest, priority: VoicePriority): Voice | null {
@@ -120,9 +155,18 @@ export function createVoiceManager(input: {
 		const channelLimit = effectiveChannelLimit(request.channelId, request.instrument);
 		const sequence = request.sequence ?? nextFallbackSequence++;
 
+		// A rapid pause/resume cycle must not stack full user-configured release tails. As soon as new
+		// playback is scheduled, any tails left by releaseAll() are converted to the bounded steal tail.
+		for (const record of releasingRecords) {
+			if (!record.boundedTail) {
+				record.boundedTail = true;
+				record.voice.steal(request.startAtSeconds);
+			}
+		}
+
 		// Rule 2: the channel is at its per-channel limit.
 		if (recordsForChannel(request.channelId).length >= channelLimit) {
-			const victim = oldestOf(recordsForChannel(request.channelId));
+			const victim = channelVictim(recordsForChannel(request.channelId), request.instrument);
 			if (victim !== undefined) steal(victim, request.startAtSeconds);
 		}
 
@@ -152,7 +196,10 @@ export function createVoiceManager(input: {
 			priority,
 			startedAtSeconds: request.startAtSeconds,
 			sequence,
-			chokeGroup
+			chokeGroup,
+			midiNote: request.midiNote,
+			velocity: request.velocity,
+			boundedTail: false
 		};
 		activeRecords.add(record);
 		voice.onEnded(() => {
@@ -165,6 +212,7 @@ export function createVoiceManager(input: {
 		for (const record of recordsForChannel(channelId)) {
 			activeRecords.delete(record);
 			releasingRecords.add(record);
+			record.boundedTail = false;
 			record.voice.release(atSeconds);
 		}
 	}
@@ -172,6 +220,7 @@ export function createVoiceManager(input: {
 	function releaseAll(atSeconds: number): void {
 		for (const record of activeRecords) {
 			releasingRecords.add(record);
+			record.boundedTail = false;
 			record.voice.release(atSeconds);
 		}
 		activeRecords.clear();
@@ -214,7 +263,7 @@ export function createVoiceManager(input: {
 
 	return {
 		get activeVoiceCount(): number {
-			return activeRecords.size;
+			return activeRecords.size + releasingRecords.size;
 		},
 		get droppedVoiceCount(): number {
 			return droppedVoiceCount;

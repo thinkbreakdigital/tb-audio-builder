@@ -2,13 +2,13 @@
  * White noise for the percussion noise layer (spec §4.1).
  *
  * The samples are generated once per audio context and shared by every hit, because filling a
- * two-second buffer is the expensive part of a noise layer and nothing about it varies per note
+ * five-second buffer is the expensive part of a noise layer and nothing about it varies per note
  * (kickoff §37). `AudioBufferSourceNode` is single-use by specification, so each hit still builds
  * its own source node and points it at this buffer; the source is never cached.
  */
 
-/** Longer than any percussion decay this project produces, so no source ever needs to loop. */
-export const NOISE_BUFFER_SECONDS = 2;
+/** Covers the maximum legal 0.5s attack + 2s decay + 2s release, plus the stop margin. */
+export const NOISE_BUFFER_SECONDS = 5;
 
 const NOISE_BUFFER_CHANNEL_COUNT = 1;
 

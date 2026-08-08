@@ -19,6 +19,7 @@ const stubContext = {} as BaseAudioContext;
 function makePitchedInstrument(overrides?: {
 	polyphonic?: boolean;
 	maxVoices?: number;
+	stealMode?: PitchedInstrumentDefinition['voice']['stealMode'];
 }): PitchedInstrumentDefinition {
 	return {
 		kind: 'pitched',
@@ -40,7 +41,7 @@ function makePitchedInstrument(overrides?: {
 		voice: {
 			polyphonic: overrides?.polyphonic ?? true,
 			maxVoices: overrides?.maxVoices ?? 8,
-			stealMode: 'oldest'
+			stealMode: overrides?.stealMode ?? 'oldest'
 		}
 	};
 }
@@ -85,12 +86,13 @@ function makeRequest(input: {
 	startAtSeconds: number;
 	sequence?: number;
 	midiNote?: number;
+	velocity?: number;
 }): VoiceStartRequest {
 	return {
 		channelId: input.channelId,
 		instrument: input.instrument,
 		midiNote: input.midiNote ?? 60,
-		velocity: 0.8,
+		velocity: input.velocity ?? 0.8,
 		startAtSeconds: input.startAtSeconds,
 		releaseAtSeconds: input.startAtSeconds + 1,
 		destination: stubDestination,
@@ -170,6 +172,7 @@ describe('createVoiceManager', () => {
 		expect(pitchedVoices[0]?.isReleasing).toBe(true);
 		expect(pitchedVoices[0]?.releasedAtSeconds).toBe(2);
 		expect(pitchedVoices[1]?.isReleasing).toBe(false);
+		// The silent test voice completes its bounded steal tail synchronously.
 		expect(manager.activeVoiceCount).toBe(2);
 	});
 
@@ -257,7 +260,48 @@ describe('createVoiceManager', () => {
 		expect(manager.activeVoiceCount).toBe(1);
 	});
 
-	it('releaseAll clears the active set', () => {
+	it('honors quietest and lowest-pitch channel steal modes with deterministic victims', () => {
+		for (const testCase of [
+			{ mode: 'quietest' as const, values: [0.8, 0.2, 0.6], expectedIndex: 1 },
+			{ mode: 'lowest-pitch' as const, values: [72, 48, 60], expectedIndex: 1 }
+		]) {
+			const { manager, pitchedVoices } = setupManager({ maxVoicesPerChannelOverride: () => 3 });
+			const instrument = makePitchedInstrument({ stealMode: testCase.mode });
+			testCase.values.forEach((value, sequence) => {
+				manager.start(
+					makeRequest({
+						channelId: 'ch-1',
+						instrument,
+						startAtSeconds: sequence,
+						sequence,
+						midiNote: testCase.mode === 'lowest-pitch' ? value : 60,
+						velocity: testCase.mode === 'quietest' ? value : 0.8
+					}),
+					'normal'
+				);
+			});
+			manager.start(
+				makeRequest({ channelId: 'ch-1', instrument, startAtSeconds: 4, sequence: 4 }),
+				'normal'
+			);
+			expect(pitchedVoices[testCase.expectedIndex]?.stoppedAtSeconds).toBe(4);
+		}
+	});
+
+	it('converts long release tails to bounded steals before scheduling resumed playback', () => {
+		const { manager, pitchedVoices } = setupManager();
+		const instrument = makePitchedInstrument();
+		manager.start(makeRequest({ channelId: 'old', instrument, startAtSeconds: 0 }), 'normal');
+		manager.releaseAll(1);
+		expect(pitchedVoices[0]?.stoppedAtSeconds).toBeNull();
+
+		manager.start(makeRequest({ channelId: 'new', instrument, startAtSeconds: 2 }), 'normal');
+		expect(pitchedVoices[0]?.stoppedAtSeconds).toBe(2);
+		manager.start(makeRequest({ channelId: 'newer', instrument, startAtSeconds: 3 }), 'normal');
+		expect(pitchedVoices[0]?.stoppedAtSeconds).toBe(2);
+	});
+
+	it('releaseAll frees allocation slots but reports release tails as live voices', () => {
 		const { manager, pitchedVoices } = setupManager();
 		const instrument = makePitchedInstrument();
 		manager.start(
@@ -272,7 +316,7 @@ describe('createVoiceManager', () => {
 
 		manager.releaseAll(5);
 
-		expect(manager.activeVoiceCount).toBe(0);
+		expect(manager.activeVoiceCount).toBe(2);
 		expect(pitchedVoices.every((voice) => voice.isReleasing)).toBe(true);
 	});
 
@@ -360,9 +404,8 @@ describe('createVoiceManager', () => {
 		);
 
 		manager.releaseAll(5);
-		expect(manager.activeVoiceCount).toBe(0);
-		// Released, not yet stopped — the tail is still owned by the manager even though it no
-		// longer counts toward the active set.
+		expect(manager.activeVoiceCount).toBe(2);
+		// Released, not yet stopped — the tails remain owned and count as live until onEnded.
 		expect(pitchedVoices.every((voice) => voice.stoppedAtSeconds === null)).toBe(true);
 
 		manager.stopAll(9);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	adsrLevelAtSeconds,
 	applyAttackDecaySustain,
 	applyRelease,
 	MIN_ENVELOPE_RAMP_SECONDS
@@ -82,12 +83,36 @@ describe('applyAttackDecaySustain', () => {
 	});
 });
 
+describe('adsrLevelAtSeconds', () => {
+	it('computes the held level during attack, decay, and sustain', () => {
+		expect(
+			adsrLevelAtSeconds({ startAtSeconds: 1, peakValue: 0.8, settings: SETTINGS, atSeconds: 1.01 })
+		).toBeCloseTo(0.4, 9);
+		expect(
+			adsrLevelAtSeconds({
+				startAtSeconds: 1,
+				peakValue: 0.8,
+				settings: SETTINGS,
+				atSeconds: 1.045
+			})
+		).toBeCloseTo(0.6, 9);
+		expect(
+			adsrLevelAtSeconds({ startAtSeconds: 1, peakValue: 0.8, settings: SETTINGS, atSeconds: 2 })
+		).toBeCloseTo(0.4, 9);
+	});
+});
+
 describe('applyRelease', () => {
 	it('returns releaseAtSeconds + releaseSeconds and ramps to zero there', () => {
 		const { param, automation } = createParam();
 		applyAttackDecaySustain({ param, startAtSeconds: 0, peakValue: 0.8, settings: SETTINGS });
 
-		const endSeconds = applyRelease({ param, releaseAtSeconds: 1, settings: SETTINGS });
+		const endSeconds = applyRelease({
+			param,
+			releaseAtSeconds: 1,
+			settings: SETTINGS,
+			fromValue: 0.8 * SETTINGS.sustainLevel
+		});
 
 		expect(endSeconds).toBeCloseTo(1.3, 10);
 		const lastCall = automation[automation.length - 1];
@@ -104,7 +129,8 @@ describe('applyRelease', () => {
 		const endSeconds = applyRelease({
 			param,
 			releaseAtSeconds: 2,
-			settings: { ...SETTINGS, releaseSeconds: 0 }
+			settings: { ...SETTINGS, releaseSeconds: 0 },
+			fromValue: 0.5
 		});
 
 		expect(endSeconds).toBeCloseTo(2 + MIN_ENVELOPE_RAMP_SECONDS, 10);
@@ -115,7 +141,7 @@ describe('applyRelease', () => {
 		const settings: AdsrSettings = { ...SETTINGS, sustainLevel: 0 };
 		applyAttackDecaySustain({ param, startAtSeconds: 0, peakValue: 0.9, settings });
 
-		applyRelease({ param, releaseAtSeconds: 1, settings });
+		applyRelease({ param, releaseAtSeconds: 1, settings, fromValue: 0 });
 
 		const anchor = callsOf(automation, 'setValueAtTime').at(-1);
 		expect(anchor).toEqual({ method: 'setValueAtTime', value: 0, atSeconds: 1 });
@@ -136,7 +162,7 @@ describe('envelope automation ordering', () => {
 		const { param, automation } = createParam();
 
 		applyAttackDecaySustain({ param, startAtSeconds: 1, peakValue: 0.8, settings: SETTINGS });
-		applyRelease({ param, releaseAtSeconds: 3, settings: SETTINGS });
+		applyRelease({ param, releaseAtSeconds: 3, settings: SETTINGS, fromValue: 0.5 });
 
 		const times = automation.map((call) => call.atSeconds);
 		expect(times).toEqual([...times].sort((a, b) => a - b));
@@ -152,7 +178,7 @@ describe('envelope automation ordering', () => {
 		};
 
 		applyAttackDecaySustain({ param, startAtSeconds: 0, peakValue: 1, settings });
-		applyRelease({ param, releaseAtSeconds: 0.5, settings });
+		applyRelease({ param, releaseAtSeconds: 0.5, settings, fromValue: 0.5 });
 
 		const times = automation.map((call) => call.atSeconds);
 		expect(times).toEqual([...times].sort((a, b) => a - b));

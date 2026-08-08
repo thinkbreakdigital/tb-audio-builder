@@ -19,7 +19,12 @@ import { PlaybackError } from '../errors.js';
 import type { InstrumentDefinition, PercussionInstrumentDefinition } from '../types/instrument.js';
 import { clamp, midiNoteToFrequencyHz, velocityToGain } from './conversions.js';
 import type { AdsrSettings } from './envelope.js';
-import { applyAttackDecaySustain, applyRelease, MIN_ENVELOPE_RAMP_SECONDS } from './envelope.js';
+import {
+	adsrLevelAtSeconds,
+	applyAttackDecaySustain,
+	applyRelease,
+	MIN_ENVELOPE_RAMP_SECONDS
+} from './envelope.js';
 import { getWhiteNoiseBuffer } from './noise-buffer.js';
 import type { Voice, VoiceFactory, VoicePriority, VoiceStartRequest } from './voice.js';
 
@@ -177,6 +182,10 @@ class PercussionVoiceImpl implements Voice {
 		this.scheduleRelease(atSeconds);
 	}
 
+	steal(atSeconds: number): void {
+		this.stop(atSeconds);
+	}
+
 	stop(atSeconds: number): void {
 		if (this.ended || this.layers.length === 0) return;
 
@@ -273,7 +282,12 @@ class PercussionVoiceImpl implements Voice {
 				param: layer.envelopeGain.gain,
 				releaseAtSeconds,
 				settings: layer.settings,
-				fromValue: this.envelopeLevelAt(layer, releaseAtSeconds)
+				fromValue: adsrLevelAtSeconds({
+					startAtSeconds: this.startedAtSeconds,
+					peakValue: layer.peakValue,
+					settings: layer.settings,
+					atSeconds: releaseAtSeconds
+				})
 			});
 			latestReleaseAtSeconds = Math.max(latestReleaseAtSeconds, releaseAtSeconds);
 			tailEndSeconds = Math.max(tailEndSeconds, layer.tailEndSeconds);
@@ -284,26 +298,6 @@ class PercussionVoiceImpl implements Voice {
 		// Both sources stop on the longer of the two tails; re-stopping is legal and the latest wins.
 		const stopAtSeconds = tailEndSeconds + SOURCE_TAIL_MARGIN_SECONDS;
 		for (const layer of this.layers) layer.source.stop(stopAtSeconds);
-	}
-
-	/**
-	 * The level the attack/decay stage holds at `atSeconds`, computed rather than read from
-	 * `param.value`: the whole envelope is scheduled up front, so a real `AudioParam` still reports
-	 * its pre-attack value here (see `applyRelease`'s `fromValue`).
-	 */
-	private envelopeLevelAt(layer: PercussionLayer, atSeconds: number): number {
-		const sustainValue = layer.peakValue * layer.settings.sustainLevel;
-		if (atSeconds >= layer.naturalReleaseAtSeconds) return sustainValue;
-		if (atSeconds <= this.startedAtSeconds) return 0;
-		if (atSeconds <= layer.attackEndSeconds) {
-			const attackProgress =
-				(atSeconds - this.startedAtSeconds) / (layer.attackEndSeconds - this.startedAtSeconds);
-			return layer.peakValue * attackProgress;
-		}
-		const decayProgress =
-			(atSeconds - layer.attackEndSeconds) /
-			(layer.naturalReleaseAtSeconds - layer.attackEndSeconds);
-		return layer.peakValue + (sustainValue - layer.peakValue) * decayProgress;
 	}
 
 	/** Whichever source ends last ends the voice. */

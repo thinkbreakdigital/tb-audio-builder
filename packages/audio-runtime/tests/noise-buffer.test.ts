@@ -21,16 +21,16 @@ function countingRandom(): () => number {
 }
 
 describe('getWhiteNoiseBuffer', () => {
-	it('generates one mono 2.0s buffer at the context sample rate', () => {
+	it('generates one mono 5.0s buffer at the context sample rate', () => {
 		const fake = createFakeAudioContext({ sampleRate: 48000 });
 
 		const buffer = asFakeAudioBuffer(getWhiteNoiseBuffer(asBaseAudioContext(fake)));
 
-		expect(NOISE_BUFFER_SECONDS).toBe(2);
+		expect(NOISE_BUFFER_SECONDS).toBe(5);
 		expect(buffer.numberOfChannels).toBe(1);
 		expect(buffer.sampleRate).toBe(48000);
-		expect(buffer.length).toBe(96000);
-		expect(buffer.duration).toBe(2);
+		expect(buffer.length).toBe(240000);
+		expect(buffer.duration).toBe(5);
 	});
 
 	it('returns the same AudioBuffer instance for repeated calls on one context', () => {
@@ -57,7 +57,7 @@ describe('getWhiteNoiseBuffer', () => {
 			0
 		);
 
-		expect(samples).toHaveLength(16000);
+		expect(samples).toHaveLength(40000);
 		let outOfRangeCount = 0;
 		let zeroCount = 0;
 		for (const sample of samples) {

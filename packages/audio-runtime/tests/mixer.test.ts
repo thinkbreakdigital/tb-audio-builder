@@ -358,6 +358,25 @@ describe('createAudioContextController', () => {
 		expect(controller.status).toBe('suspended');
 	});
 
+	it('initialize resumes the same context after it becomes suspended', async () => {
+		const fake = createFakeAudioContext();
+		let factoryCalls = 0;
+		const controller = createAudioContextController({
+			contextFactory: () => {
+				factoryCalls += 1;
+				return asBaseAudioContext(fake);
+			}
+		});
+
+		await controller.initialize();
+		fake.setState('suspended');
+		expect(controller.status).toBe('suspended');
+		await controller.initialize();
+
+		expect(controller.status).toBe('running');
+		expect(factoryCalls).toBe(1);
+	});
+
 	it('onStatusChange returns a working unsubscribe function', async () => {
 		const fakeContext = createFakeAudioContext();
 		const controller = createAudioContextController({

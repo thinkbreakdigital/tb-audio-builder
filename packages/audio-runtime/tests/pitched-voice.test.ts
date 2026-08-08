@@ -368,6 +368,25 @@ describe('createPitchedVoiceFactory — lifecycle', () => {
 		expect(harness.oscillator.stoppedAtSeconds).toBeCloseTo(3.21, 9);
 	});
 
+	it('releases from the actual attack level for a short note with a slow attack', () => {
+		const harness = startVoice({
+			instrument: makeInstrument({
+				amplitudeEnvelope: {
+					attackSeconds: 0.6,
+					decaySeconds: 0.1,
+					sustainLevel: 0.85,
+					releaseSeconds: 0.2
+				}
+			}),
+			releaseAtSeconds: 1.1
+		});
+
+		const releaseAnchor = harness.envelopeGain.gain.automation[5];
+		expect(releaseAnchor?.method).toBe('setValueAtTime');
+		expect(releaseAnchor?.value).toBeCloseTo(1 / 6, 9);
+		expect(releaseAnchor?.value).not.toBeCloseTo(0.85, 3);
+	});
+
 	it('holds indefinitely for an infinite release time until release() is called', () => {
 		const harness = startVoice({
 			instrument: makeInstrument({ amplitudeEnvelope: { releaseSeconds: 0.2 } }),
@@ -608,13 +627,14 @@ describe('audio engine with the pitched factory registered', () => {
 		engine.play();
 		runFor(fake, 1);
 
-		// Two channels at their caps: 1 monophonic + 2 drone voices.
-		expect(engine.activeVoiceCount).toBe(3);
+		// Three voices remain allocatable; five replaced voices are still represented by the fake's
+		// bounded steal tails because the fake clock does not emit scheduled `ended` events.
+		expect(engine.activeVoiceCount).toBe(8);
 
 		engine.dispose();
 	});
 
-	it('delivers only the pitch bends inside a note, at context times derived from its start', async () => {
+	it('carries a held pitch bend into note start and delivers later bends at derived times', async () => {
 		const fake = createFakeAudioContext();
 		const engine = createAudioEngine({ contextFactory: () => asBaseAudioContext(fake) });
 		engine.loadProject(
@@ -645,11 +665,13 @@ describe('audio engine with the pitched factory registered', () => {
 		expect(oscillator.detune.automation.map((call) => [call.method, call.value])).toEqual([
 			['setValueAtTime', 0],
 			['setValueAtTime', 200],
+			['setValueAtTime', 200],
 			['setValueAtTime', -100]
 		]);
 		const noteStartSeconds = oscillator.frequency.automation[0]?.atSeconds as number;
-		expect(oscillator.detune.automation[1]?.atSeconds).toBeCloseTo(noteStartSeconds + 0.5, 9);
-		expect(oscillator.detune.automation[2]?.atSeconds).toBeCloseTo(noteStartSeconds + 0.75, 9);
+		expect(oscillator.detune.automation[1]?.atSeconds).toBeCloseTo(noteStartSeconds, 9);
+		expect(oscillator.detune.automation[2]?.atSeconds).toBeCloseTo(noteStartSeconds + 0.5, 9);
+		expect(oscillator.detune.automation[3]?.atSeconds).toBeCloseTo(noteStartSeconds + 0.75, 9);
 
 		engine.dispose();
 	});

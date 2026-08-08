@@ -18,6 +18,34 @@ export interface AdsrSettings {
 	releaseSeconds: number;
 }
 
+/**
+ * Analytic value of the attack/decay/sustain stage at an audio-context time. Voices schedule
+ * automation ahead of the context clock, so reading `AudioParam.value` cannot answer this reliably.
+ */
+export function adsrLevelAtSeconds(input: {
+	startAtSeconds: number;
+	peakValue: number;
+	settings: AdsrSettings;
+	atSeconds: number;
+}): number {
+	const { startAtSeconds, peakValue, settings, atSeconds } = input;
+	if (atSeconds <= startAtSeconds) return 0;
+
+	const attackEndSeconds =
+		startAtSeconds + Math.max(settings.attackSeconds, MIN_ENVELOPE_RAMP_SECONDS);
+	if (atSeconds <= attackEndSeconds) {
+		return peakValue * ((atSeconds - startAtSeconds) / (attackEndSeconds - startAtSeconds));
+	}
+
+	const decayEndSeconds =
+		attackEndSeconds + Math.max(settings.decaySeconds, MIN_ENVELOPE_RAMP_SECONDS);
+	const sustainValue = peakValue * settings.sustainLevel;
+	if (atSeconds >= decayEndSeconds) return sustainValue;
+
+	const decayProgress = (atSeconds - attackEndSeconds) / (decayEndSeconds - attackEndSeconds);
+	return peakValue + (sustainValue - peakValue) * decayProgress;
+}
+
 export function applyAttackDecaySustain(input: {
 	param: AudioParam;
 	startAtSeconds: number;
@@ -45,20 +73,13 @@ export function applyRelease(input: {
 	param: AudioParam;
 	releaseAtSeconds: number;
 	settings: AdsrSettings;
-	/**
-	 * Deliberate extension beyond spec §4.1's signature. The release starts from the level the
-	 * envelope holds at `releaseAtSeconds`. Reading `param.value` is only correct when the release is
-	 * scheduled while the note is already sounding; a voice that schedules its whole envelope up
-	 * front knows that level analytically (`peakValue * sustainLevel`) and passes it here, because at
-	 * construction time a real `AudioParam` still reports its pre-attack value.
-	 */
-	fromValue?: number;
+	/** Value the ADS stage holds at `releaseAtSeconds`, computed by `adsrLevelAtSeconds`. */
+	fromValue: number;
 }): number {
 	const { param, releaseAtSeconds, settings } = input;
 
-	const startValue = input.fromValue ?? param.value;
 	param.cancelScheduledValues(releaseAtSeconds);
-	param.setValueAtTime(startValue, releaseAtSeconds);
+	param.setValueAtTime(input.fromValue, releaseAtSeconds);
 
 	const releaseEndSeconds =
 		releaseAtSeconds + Math.max(settings.releaseSeconds, MIN_ENVELOPE_RAMP_SECONDS);
