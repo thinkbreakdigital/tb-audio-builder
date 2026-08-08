@@ -169,16 +169,27 @@ describe('engine client initialization', () => {
 	});
 
 	it('resumes through the public runtime API and dispose resets client ownership idempotently', async () => {
-		const { createEngineClient } = await loadModules();
+		const { createEngineClient, playbackState } = await loadModules();
 		const fake = createFakeEngine();
 		const client = createEngineClient({ createEngine: () => fake.engine, isBrowser: () => true });
 
 		await expect(client.resumeAudio()).resolves.toBe(fake.engine);
 		expect(fake.spies.resumeAudioContext).toHaveBeenCalledTimes(1);
+		playbackState.setTransportStatus('playing');
+		playbackState.setPositionTicks(120);
+		playbackState.setMeterLevels({ lead: 0.5 }, 1);
 		client.dispose();
 		client.dispose();
 		expect(fake.spies.dispose).toHaveBeenCalledTimes(1);
 		expect(client.engine).toBeNull();
+		expect(playbackState).toMatchObject({
+			transportStatus: 'stopped',
+			positionTicks: 0,
+			channelLevels: {},
+			masterLevel: 0,
+			masterClipLatched: false,
+			audioContextStatus: 'uninitialized'
+		});
 	});
 
 	it('reports a resume rejection without throwing', async () => {

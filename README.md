@@ -51,7 +51,7 @@ suggestions.
 See [`docs/phase-09-handoff.md`](docs/phase-09-handoff.md) for the completed non-rendering
 instrument foundation, the intentionally paused UI/UX milestone, and the single-global-Mixer
 ownership contract.
-See [`docs/phase-10-handoff.md`](docs/phase-10-handoff.md) for the active headless transport/mixer
+See [`docs/phase-10-handoff.md`](docs/phase-10-handoff.md) for the completed headless transport/mixer
 foundation and the separately paused global-Mixer UI milestone.
 
 ## Checks

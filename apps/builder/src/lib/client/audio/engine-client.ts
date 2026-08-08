@@ -50,7 +50,7 @@ export function createEngineClient(options: EngineClientOptions = {}) {
 		unsubscribePlaybackError?.();
 		unsubscribePlaybackError = null;
 		engine = null;
-		playbackState.setAudioContextStatus('uninitialized');
+		playbackState.reset();
 	}
 
 	function loadCurrentProject(nextEngine: AudioEngine): void {
