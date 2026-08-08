@@ -5,22 +5,28 @@
 	 * `gain` (10B §4.3, §4.5 — a deliberate display-only deviation, not a schema rename).
 	 *
 	 * Self-contained: local state only, no project/audio/persistence writes. Shares the field-reveal,
-	 * reset, validation, and keyboard contract in pot-interaction.ts with RotaryPot and
-	 * DualRotaryPot; travels vertically via a real <input type="range"> instead of a rotary control,
-	 * and — unlike the two rotary controls — lets the native range handle the drag itself rather than
-	 * computing it from pointer deltas, since `writing-mode: vertical-lr` already makes that correct.
+	 * reset, validation, and keyboard contract in pot-interaction.ts with RotaryPot and DualRotaryPot;
+	 * travels vertically via a real <input type="range"> instead of a rotary control.
+	 *
+	 * Dragging goes through the same startDrag pointer math as the two rotary pots (not a copy of
+	 * it — the math was never rotary-specific, just a vertical pixel delta) rather than the native
+	 * range's own dragging: a native range jumps the thumb to wherever the pointer went down before
+	 * any drag begins, which is wrong for a precision control — a press alone must never move the
+	 * value, only movement should. `writing-mode: vertical-lr` still governs native keyboard
+	 * direction (Arrow Up increases) and the visual thumb; it no longer drives pointer dragging.
 	 *
 	 * The label stays fixed above the fader and stays bound to the range at all times. The fader shaft
-	 * itself has no click behavior — pointer down on it only drags (native), and double-click resets
-	 * to defaultValue. The value readout below is a real <button>; clicking (or Enter/Space-ing) that
-	 * is the only way to reveal the number field, which swaps in over the readout in place.
+	 * itself has no click behavior — pointer down on it only drags, and double-click resets to
+	 * defaultValue. The value readout below is a real <button>; clicking (or Enter/Space-ing) that is
+	 * the only way to reveal the number field, which swaps in over the readout in place.
 	 */
 	import {
 		clamp,
 		commitDraftFor,
 		focusAndSelect,
 		formatValue,
-		handleRangeKeydown
+		handleRangeKeydown,
+		startDrag
 	} from './pot-interaction';
 
 	export interface Props {
@@ -74,6 +80,10 @@
 
 	function onRangeKeydown(event: KeyboardEvent) {
 		handleRangeKeydown(event, committed, min, max, fineStep, commit);
+	}
+
+	function onPointerDown(event: PointerEvent) {
+		startDrag(event, committed, min, max, step, fineStep, commit);
 	}
 
 	function onDoubleClick() {
@@ -135,6 +145,7 @@
 			value={committed}
 			oninput={onRangeInput}
 			onkeydown={onRangeKeydown}
+			onpointerdown={onPointerDown}
 			ondblclick={onDoubleClick}
 			aria-describedby={error ? errorId : undefined}
 		/>
@@ -254,6 +265,9 @@
 		margin: 0;
 		background: transparent;
 		cursor: ns-resize;
+		/* Without this, dragging the fader with a mouse selects surrounding page text and leaves a
+		   smeared selection behind once the drag ends. */
+		user-select: none;
 	}
 
 	.fader-input:focus-visible {

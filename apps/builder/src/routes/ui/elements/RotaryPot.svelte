@@ -13,6 +13,12 @@
 	 * is a real <button>, and clicking (or Enter/Space-ing) that is the only way to reveal the number
 	 * field, which swaps in over the readout in place. The label stays put above the dial and bound
 	 * to the range the whole time, so the range never loses its accessible name.
+	 *
+	 * scale:'log' steps in cents, not Hz: a fixed number of Hz is a near-semitone jump at 20Hz and
+	 * inaudible at 15kHz, so every step (keyboard or drag) multiplies by a constant musical interval
+	 * instead. The native range still holds real Hz — aria-valuetext already announces the formatted
+	 * frequency, so it stays meaningful with no further accessibility change needed. See
+	 * pot-interaction.ts for the shared cents maths and why linear parameters never touch it.
 	 */
 	import {
 		angleFor,
@@ -20,8 +26,10 @@
 		commitDraftFor,
 		focusAndSelect,
 		formatValue,
+		handleLogRangeKeydown,
 		handleRangeKeydown,
 		startDrag,
+		startLogDrag,
 		type Scale
 	} from './pot-interaction';
 
@@ -78,11 +86,19 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		handleRangeKeydown(event, value, min, max, fineStep, commit);
+		if (scale === 'log') {
+			handleLogRangeKeydown(event, value, min, max, commit);
+		} else {
+			handleRangeKeydown(event, value, min, max, fineStep, commit);
+		}
 	}
 
 	function handlePointerDown(event: PointerEvent) {
-		startDrag(event, value, min, max, step, fineStep, commit);
+		if (scale === 'log') {
+			startLogDrag(event, value, min, max, commit);
+		} else {
+			startDrag(event, value, min, max, step, fineStep, commit);
+		}
 	}
 
 	function handleDoubleClick() {
@@ -259,6 +275,9 @@
 		margin: 0;
 		opacity: 0;
 		cursor: ns-resize;
+		/* Without this, dragging the (invisible) range with a mouse selects surrounding page text and
+		   leaves a smeared selection behind once the drag ends. */
+		user-select: none;
 	}
 
 	.dial-body {

@@ -13,6 +13,10 @@
 	 * is its own real <button>; clicking (or Enter/Space-ing) one swaps that half for its own number
 	 * field, independently of the other, so both values stay readable while one is being edited —
 	 * the name-swap approach an earlier pass used ate the wrong real estate.
+	 *
+	 * Either ring can independently be scale:'log' (e.g. cutoff, or oscillator start/end frequency
+	 * paired concentrically) — a log ring steps in cents, not Hz, for the same reason as RotaryPot.
+	 * See pot-interaction.ts for the shared cents maths.
 	 */
 	import {
 		angleFor,
@@ -20,8 +24,10 @@
 		commitDraftFor,
 		focusAndSelect,
 		formatValue,
+		handleLogRangeKeydown,
 		handleRangeKeydown,
 		startDrag,
+		startLogDrag,
 		type Scale
 	} from './pot-interaction';
 
@@ -135,19 +141,35 @@
 	}
 
 	function handleOuterKeydown(event: KeyboardEvent) {
-		handleRangeKeydown(event, outerValue, outerMin, outerMax, outerFineStep, commitOuter);
+		if (outerScale === 'log') {
+			handleLogRangeKeydown(event, outerValue, outerMin, outerMax, commitOuter);
+		} else {
+			handleRangeKeydown(event, outerValue, outerMin, outerMax, outerFineStep, commitOuter);
+		}
 	}
 
 	function handleInnerKeydown(event: KeyboardEvent) {
-		handleRangeKeydown(event, innerValue, innerMin, innerMax, innerFineStep, commitInner);
+		if (innerScale === 'log') {
+			handleLogRangeKeydown(event, innerValue, innerMin, innerMax, commitInner);
+		} else {
+			handleRangeKeydown(event, innerValue, innerMin, innerMax, innerFineStep, commitInner);
+		}
 	}
 
 	function handleOuterPointerDown(event: PointerEvent) {
-		startDrag(event, outerValue, outerMin, outerMax, outerStep, outerFineStep, commitOuter);
+		if (outerScale === 'log') {
+			startLogDrag(event, outerValue, outerMin, outerMax, commitOuter);
+		} else {
+			startDrag(event, outerValue, outerMin, outerMax, outerStep, outerFineStep, commitOuter);
+		}
 	}
 
 	function handleInnerPointerDown(event: PointerEvent) {
-		startDrag(event, innerValue, innerMin, innerMax, innerStep, innerFineStep, commitInner);
+		if (innerScale === 'log') {
+			startLogDrag(event, innerValue, innerMin, innerMax, commitInner);
+		} else {
+			startDrag(event, innerValue, innerMin, innerMax, innerStep, innerFineStep, commitInner);
+		}
 	}
 
 	function handleOuterDoubleClick() {
@@ -456,6 +478,9 @@
 		margin: 0;
 		opacity: 0;
 		cursor: ns-resize;
+		/* Without this, dragging either (invisible) range with a mouse selects surrounding page text
+		   and leaves a smeared selection behind once the drag ends. */
+		user-select: none;
 	}
 
 	.range-input.outer {
