@@ -180,6 +180,34 @@ Export framework-neutral TypeScript
 
 A user MUST be able to replace the MIDI data assigned to an existing channel without losing that channel's instrument settings.
 
+### 5.1 Compact musician-facing workspace contract
+
+The workspace MUST be organized around two top-level views: **Channel Editor** and **Mixer
+Overview**. Channel Editor follows the selected channel and has two nested tabs: **Instrument** and
+**Mixer**. The channel header owns channel name, role, `Include in playback`, and reset. The
+Instrument tab owns synthesis, instrument presets, and press-and-hold preview. The focused Mixer
+tab owns that channel's gain, pan, mute, solo, meter, and audibility text. Mixer Overview remains
+the all-channel balancing surface and owns loop controls, sound sets, normalization, and the master
+section. Focused and overview mixer controls edit the same project fields through shared logic.
+
+Continuous parameters SHOULD use a compact rotary control with native slider semantics and an
+editable numeric value beneath it. Every rotary control MUST remain operable by keyboard and MUST
+provide units, validation, and reset-to-default behavior. Closely related values MAY share one knob
+through a labelled segmented selector when this reduces panel size without mixing unrelated units:
+
+* Pitched tuning uses one stepped knob selected by `O` (Octave), `S` (Semitone), or `F` (Fine).
+* Amplitude envelopes use one smooth knob selected by `A`, `D`, `S`, or `R`.
+* Pitched vibrato may bank Rate and Depth; percussion oscillator pitch may bank Start and End.
+* Filters, channel gain/pan, layer gains, root note, master gain, and compressor parameters remain
+  dedicated controls.
+
+The selected bank member and both tab levels are temporary UI state. Changing them MUST NOT change
+audio, dirty the project, autosave, synchronize, or appear in portable/code exports. Preset headers
+use familiar previous/next arrows plus explicit Browse and Save As actions; icons always have
+visible text or unambiguous accessible names and help text. Factory presets cannot be overwritten.
+Compact mixer strips use a vertical gain fader, a pan knob, text `MUTE`/`SOLO` toggles, a meter,
+and textual audibility. The workspace MUST remain usable at 1024×640 and at 200% zoom.
+
 ---
 
 ## 6. Project scope
