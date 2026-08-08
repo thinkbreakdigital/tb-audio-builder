@@ -7,10 +7,11 @@
 	import Panel from '$lib/components/Panel.svelte';
 	import SelectField from '$lib/components/SelectField.svelte';
 	import TextField from '$lib/components/TextField.svelte';
+	import { instrumentForRoleChange } from '$lib/features/channels/channel-assignment.js';
 	import { projectState } from '$lib/state/project.svelte.js';
 	import { uiState } from '$lib/state/ui.svelte.js';
 
-	const NAME_MAX_LENGTH = 200;
+	const NAME_MAX_LENGTH = 120;
 
 	const ROLE_OPTIONS: { value: ChannelRole; label: string }[] = [
 		{ value: 'pitched', label: 'Pitched' },
@@ -73,7 +74,11 @@
 	function handleRoleChange(event: Event) {
 		if (channel === null) return;
 		const role = (event.target as HTMLSelectElement).value as ChannelRole;
-		const instrument = role === 'ignored' || role === 'metadata' ? null : channel.instrument;
+		const instrument = instrumentForRoleChange({
+			currentRole: channel.role,
+			nextRole: role,
+			currentInstrument: channel.instrument
+		});
 		projectState.updateChannel(channel.id, { role, instrument });
 	}
 

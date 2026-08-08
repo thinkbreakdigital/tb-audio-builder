@@ -86,7 +86,10 @@ export const PercussionInstrumentDefinitionSchema = z
 			})
 			.strict(),
 		rootMidiNote: z.number().int().min(0).max(127),
-		chokeGroup: z.string().min(1).nullable()
+		chokeGroup: z
+			.string()
+			.transform((value) => (value.trim().length === 0 ? null : value))
+			.nullable()
 	})
 	.strict();
 

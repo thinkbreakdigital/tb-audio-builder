@@ -123,4 +123,54 @@ export const CompiledSongSchema = z
 	.refine((song) => song.timeSignatures.some(({ tick }) => tick === 0), {
 		path: ['timeSignatures'],
 		message: 'timeSignatures must contain an entry at tick 0'
+	})
+	.superRefine((song, context) => {
+		const checkPosition = (position: number, path: (string | number)[]) => {
+			if (position > song.durationTicks) {
+				context.addIssue({
+					code: 'custom',
+					path,
+					message: `position must be within durationTicks (${song.durationTicks})`
+				});
+			}
+		};
+
+		song.tempoChanges.forEach(({ tick }, index) =>
+			checkPosition(tick, ['tempoChanges', index, 'tick'])
+		);
+		song.timeSignatures.forEach(({ tick }, index) =>
+			checkPosition(tick, ['timeSignatures', index, 'tick'])
+		);
+		song.markers.forEach(({ tick }, index) => checkPosition(tick, ['markers', index, 'tick']));
+		const seenTrackIds = new Set<string>();
+		song.tracks.forEach((track, trackIndex) => {
+			if (seenTrackIds.has(track.id)) {
+				context.addIssue({
+					code: 'custom',
+					path: ['tracks', trackIndex, 'id'],
+					message: 'track id must be unique within a song'
+				});
+			}
+			seenTrackIds.add(track.id);
+
+			track.notes.forEach((note, noteIndex) => {
+				checkPosition(note.tick, ['tracks', trackIndex, 'notes', noteIndex, 'tick']);
+				checkPosition(note.tick + note.durationTicks, [
+					'tracks',
+					trackIndex,
+					'notes',
+					noteIndex,
+					'durationTicks'
+				]);
+			});
+			track.pitchBends.forEach(({ tick }, eventIndex) =>
+				checkPosition(tick, ['tracks', trackIndex, 'pitchBends', eventIndex, 'tick'])
+			);
+			track.modulationEvents.forEach(({ tick }, eventIndex) =>
+				checkPosition(tick, ['tracks', trackIndex, 'modulationEvents', eventIndex, 'tick'])
+			);
+			track.volumeEvents.forEach(({ tick }, eventIndex) =>
+				checkPosition(tick, ['tracks', trackIndex, 'volumeEvents', eventIndex, 'tick'])
+			);
+		});
 	});

@@ -3,9 +3,11 @@ import { describe, expect, test } from 'vitest';
 import {
 	BuilderProjectSchema,
 	CompiledSongSchema,
+	InstrumentPresetSchema,
 	PercussionInstrumentDefinitionSchema,
 	PitchedInstrumentDefinitionSchema,
 	ProjectValidationError,
+	SoundSetSchema,
 	createEmptyProject,
 	parseOrThrow
 } from '../src';
@@ -59,7 +61,7 @@ function song() {
 				midiChannel: 15,
 				notes: [
 					{ tick: 0, durationTicks: 1, midiNote: 0, velocity: 0 },
-					{ tick: 10, durationTicks: 2, midiNote: 127, velocity: 1 }
+					{ tick: 8, durationTicks: 2, midiNote: 127, velocity: 1 }
 				],
 				pitchBends: [
 					{ tick: 0, value: -1 },
@@ -90,8 +92,42 @@ function project(): BuilderProject {
 			mix: { gain: 1, pan: -1, muted: false, soloed: false }
 		}
 	];
-	value.transport.tempoMultiplier = 4;
+	value.transport = { loopEnabled: true, loopStartTick: 0, loopEndTick: 10, tempoMultiplier: 4 };
 	return value;
+}
+
+function percussion() {
+	return {
+		kind: 'percussion' as const,
+		presetId: null,
+		oscillatorLayer: {
+			enabled: true,
+			pitchTracksNote: false,
+			waveform: 'sine' as const,
+			startFrequencyHz: 20,
+			endFrequencyHz: 8000,
+			pitchDecaySeconds: 1,
+			attackSeconds: 0.5,
+			decaySeconds: 2,
+			sustainLevel: 1,
+			releaseSeconds: 2,
+			gain: 1
+		},
+		noiseLayer: {
+			enabled: true,
+			filterTracksNote: false,
+			filterType: 'bandpass' as const,
+			filterFrequencyHz: 20_000,
+			filterQ: 20,
+			attackSeconds: 0.5,
+			decaySeconds: 2,
+			sustainLevel: 1,
+			releaseSeconds: 2,
+			gain: 1
+		},
+		rootMidiNote: 60,
+		chokeGroup: null
+	};
 }
 
 describe('schemas', () => {
@@ -248,6 +284,204 @@ describe('schemas', () => {
 		const invalidTrack = project();
 		invalidTrack.channels[0]!.sourceTrackId = '00000000-0000-4000-8000-000000000099';
 		expect(BuilderProjectSchema.safeParse(invalidTrack).success).toBe(false);
+	});
+
+	test('enforces the role and instrument matrix', () => {
+		const cases = [
+			['pitched', null],
+			['pitched', percussion()],
+			['percussion', null],
+			['percussion', pitched()],
+			['ignored', pitched()],
+			['metadata', percussion()]
+		] as const;
+		for (const [role, instrument] of cases) {
+			const value = project();
+			value.channels[0] = {
+				...value.channels[0]!,
+				role,
+				instrument
+			} as (typeof value.channels)[number];
+			expect(BuilderProjectSchema.safeParse(value).success).toBe(false);
+		}
+	});
+
+	test('enforces duration bounds for every song position and note end', () => {
+		const mutations: ((value: ReturnType<typeof song>) => void)[] = [
+			(value) => {
+				value.tempoChanges[1]!.tick = 11;
+			},
+			(value) => {
+				value.timeSignatures[1]!.tick = 11;
+			},
+			(value) => {
+				value.markers = [{ tick: 11, name: 'Late' }];
+			},
+			(value) => {
+				value.tracks[0]!.notes[1]!.durationTicks = 3;
+			},
+			(value) => {
+				value.tracks[0]!.pitchBends[1]!.tick = 11;
+			},
+			(value) => {
+				value.tracks[0]!.modulationEvents = [{ tick: 11, value: 1 }];
+			},
+			(value) => {
+				value.tracks[0]!.volumeEvents = [{ tick: 11, value: 1 }];
+			}
+		];
+		for (const mutate of mutations) {
+			const value = song();
+			mutate(value);
+			expect(CompiledSongSchema.safeParse(value).success).toBe(false);
+		}
+	});
+
+	test('enforces numeric, ordered loop bounds while preserving a disabled region', () => {
+		const disabledAtOrigin = project();
+		disabledAtOrigin.transport = {
+			loopEnabled: false,
+			loopStartTick: 0,
+			loopEndTick: 0,
+			tempoMultiplier: 1
+		};
+		expect(BuilderProjectSchema.safeParse(disabledAtOrigin).success).toBe(true);
+		const disabledWithBounds = project();
+		disabledWithBounds.transport = {
+			loopEnabled: false,
+			loopStartTick: 1,
+			loopEndTick: 2,
+			tempoMultiplier: 1
+		};
+		expect(BuilderProjectSchema.safeParse(disabledWithBounds).success).toBe(true);
+		const reversedDisabledLoop = project();
+		reversedDisabledLoop.transport = {
+			loopEnabled: false,
+			loopStartTick: 2,
+			loopEndTick: 1,
+			tempoMultiplier: 1
+		};
+		expect(BuilderProjectSchema.safeParse(reversedDisabledLoop).success).toBe(false);
+		const outOfBoundsDisabledLoop = project();
+		outOfBoundsDisabledLoop.transport = {
+			loopEnabled: false,
+			loopStartTick: 1,
+			loopEndTick: 11,
+			tempoMultiplier: 1
+		};
+		expect(BuilderProjectSchema.safeParse(outOfBoundsDisabledLoop).success).toBe(false);
+
+		const emptySongLoop = project();
+		emptySongLoop.song = {
+			...emptySongLoop.song!,
+			durationTicks: 0,
+			tempoChanges: [emptySongLoop.song!.tempoChanges[0]!],
+			timeSignatures: [emptySongLoop.song!.timeSignatures[0]!],
+			markers: [],
+			tracks: []
+		};
+		emptySongLoop.channels = [];
+		emptySongLoop.transport = {
+			loopEnabled: true,
+			loopStartTick: 0,
+			loopEndTick: 0,
+			tempoMultiplier: 1
+		};
+		expect(BuilderProjectSchema.safeParse(emptySongLoop).success).toBe(true);
+		const outOfBoundsLoop = project();
+		outOfBoundsLoop.transport.loopEndTick = 11;
+		expect(BuilderProjectSchema.safeParse(outOfBoundsLoop).success).toBe(false);
+		const loopWithoutSong = createEmptyProject({ name: 'No song' });
+		loopWithoutSong.transport = {
+			loopEnabled: true,
+			loopStartTick: 0,
+			loopEndTick: 1,
+			tempoMultiplier: 1
+		};
+		expect(BuilderProjectSchema.safeParse(loopWithoutSong).success).toBe(false);
+		const boundsWithoutSong = createEmptyProject({ name: 'No song' });
+		boundsWithoutSong.transport = {
+			loopEnabled: false,
+			loopStartTick: 0,
+			loopEndTick: 1,
+			tempoMultiplier: 1
+		};
+		expect(BuilderProjectSchema.safeParse(boundsWithoutSong).success).toBe(false);
+	});
+
+	test('rejects duplicate track/channel/source-track IDs while keeping source existence validation', () => {
+		const duplicateTrack = song();
+		duplicateTrack.tracks.push({ ...duplicateTrack.tracks[0]! });
+		expect(CompiledSongSchema.safeParse(duplicateTrack).success).toBe(false);
+
+		const duplicateChannel = project();
+		duplicateChannel.channels.push({ ...duplicateChannel.channels[0]!, sourceTrackId: null });
+		expect(BuilderProjectSchema.safeParse(duplicateChannel).success).toBe(false);
+
+		const duplicateSource = project();
+		duplicateSource.channels.push({
+			...duplicateSource.channels[0]!,
+			id: '00000000-0000-4000-8000-000000000024'
+		});
+		expect(BuilderProjectSchema.safeParse(duplicateSource).success).toBe(false);
+
+		const missingSource = project();
+		missingSource.channels[0]!.sourceTrackId = '00000000-0000-4000-8000-000000000099';
+		expect(BuilderProjectSchema.safeParse(missingSource).success).toBe(false);
+	});
+
+	test('rejects blank or overlong project and channel names without trimming display names', () => {
+		const blankProject = project();
+		blankProject.name = ' \t ';
+		expect(BuilderProjectSchema.safeParse(blankProject).success).toBe(false);
+		const longChannel = project();
+		longChannel.channels[0]!.name = 'x'.repeat(121);
+		expect(BuilderProjectSchema.safeParse(longChannel).success).toBe(false);
+		const displayName = project();
+		displayName.name = '  Intentional spaces  ';
+		const parsed = BuilderProjectSchema.parse(displayName);
+		expect(parsed.name).toBe('  Intentional spaces  ');
+	});
+
+	test('normalizes a whitespace-only choke group and enforces preset IDs by builtIn status', () => {
+		const normalized = PercussionInstrumentDefinitionSchema.parse({
+			...percussion(),
+			chokeGroup: ' \t '
+		});
+		expect(normalized.chokeGroup).toBeNull();
+
+		const preset = {
+			id: '00000000-0000-4000-8000-000000000030',
+			name: 'Custom',
+			type: 'pitched' as const,
+			definition: pitched(),
+			builtIn: false,
+			createdAtMs: 1,
+			updatedAtMs: 1
+		};
+		expect(InstrumentPresetSchema.safeParse(preset).success).toBe(true);
+		expect(InstrumentPresetSchema.safeParse({ ...preset, id: 'square-lead' }).success).toBe(false);
+		expect(
+			InstrumentPresetSchema.safeParse({ ...preset, builtIn: true, id: 'square-lead' }).success
+		).toBe(true);
+		expect(InstrumentPresetSchema.safeParse({ ...preset, builtIn: true }).success).toBe(false);
+
+		const { id: _id, sourceTrackId: _sourceTrackId, ...soundSetChannel } = project().channels[0]!;
+		expect(_id).toBe(CHANNEL_ID);
+		expect(_sourceTrackId).toBe(TRACK_ID);
+		const soundSet = {
+			schemaVersion: 1,
+			id: '00000000-0000-4000-8000-000000000031',
+			name: 'Set',
+			builtIn: false,
+			channels: [soundSetChannel, { ...soundSetChannel }],
+			master: project().master,
+			createdAtMs: 1,
+			updatedAtMs: 1
+		};
+		expect(SoundSetSchema.safeParse(soundSet).success).toBe(true);
+		expect(SoundSetSchema.safeParse({ ...soundSet, id: 'set' }).success).toBe(false);
+		expect(SoundSetSchema.safeParse({ ...soundSet, builtIn: true, id: 'set' }).success).toBe(true);
 	});
 
 	test('rejects unknown keys and reports every validation path', () => {

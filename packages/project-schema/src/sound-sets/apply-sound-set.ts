@@ -8,11 +8,13 @@ export interface SoundSetApplyPlan {
 	discardedSoundSetChannels: string[];
 }
 
-export function planSoundSetApply(input: {
-	soundSet: SoundSet;
-	channels: readonly AudioChannelDefinition[];
-}): SoundSetApplyPlan {
-	const pairing = pairByNameThenPosition(input.channels, input.soundSet.channels);
+type SoundSetPairing = {
+	pairs: { left: AudioChannelDefinition; right: SoundSet['channels'][number] }[];
+	unmatchedLeft: AudioChannelDefinition[];
+	unmatchedRight: SoundSet['channels'][number][];
+};
+
+function createSoundSetApplyPlan(pairing: SoundSetPairing): SoundSetApplyPlan {
 	return {
 		assignments: pairing.pairs.map(({ left, right }) => ({
 			channelId: left.id,
@@ -22,6 +24,14 @@ export function planSoundSetApply(input: {
 		unchangedChannelIds: pairing.unmatchedLeft.map(({ id }) => id),
 		discardedSoundSetChannels: pairing.unmatchedRight.map(({ name }) => name)
 	};
+}
+
+export function planSoundSetApply(input: {
+	soundSet: SoundSet;
+	channels: readonly AudioChannelDefinition[];
+}): SoundSetApplyPlan {
+	const pairing = pairByNameThenPosition(input.channels, input.soundSet.channels);
+	return createSoundSetApplyPlan(pairing);
 }
 
 export function applySoundSet(input: {
@@ -50,6 +60,6 @@ export function applySoundSet(input: {
 	return {
 		channels: input.channels.map((channel) => replacements.get(channel.id) ?? channel),
 		master: structuredClone(input.soundSet.master),
-		plan: planSoundSetApply(input)
+		plan: createSoundSetApplyPlan(pairing)
 	};
 }

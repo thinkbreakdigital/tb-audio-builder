@@ -26,7 +26,7 @@ describe('factories', () => {
 		const makeChannel = (id: string) =>
 			createChannelForTrack({
 				track: { id: TRACK_ID, sourceTrackName: 'Lead' },
-				role: 'pitched',
+				role: 'ignored',
 				instrument: null,
 				idGenerator: () => id
 			});

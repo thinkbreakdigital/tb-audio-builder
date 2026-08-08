@@ -104,7 +104,7 @@ describe('sound sets', () => {
 			project,
 			name: 'Set',
 			nowMs: 20,
-			id: 'test-set'
+			id: '00000000-0000-4000-8000-000000000101'
 		});
 		expect(SoundSetSchema.safeParse(soundSet).success).toBe(true);
 		expect(
@@ -118,7 +118,12 @@ describe('sound sets', () => {
 
 	test('round trips channels without sharing objects or instrument references', () => {
 		const project = projectWithChannels();
-		const soundSet = createSoundSetFromProject({ project, name: 'Set', id: 'test-set', nowMs: 1 });
+		const soundSet = createSoundSetFromProject({
+			project,
+			name: 'Set',
+			id: '00000000-0000-4000-8000-000000000102',
+			nowMs: 1
+		});
 		const applied = applySoundSet({ soundSet, channels: project.channels });
 		expect(applied.channels).toEqual(project.channels);
 		expect(applied.channels[0]).not.toBe(project.channels[0]);
@@ -134,7 +139,7 @@ describe('sound sets', () => {
 		const soundSet = createSoundSetFromProject({
 			project: source,
 			name: 'Set',
-			id: 'set',
+			id: '00000000-0000-4000-8000-000000000103',
 			nowMs: 1
 		});
 		const target = projectWithChannels(['Track 1', 'Track 2']);
@@ -149,7 +154,7 @@ describe('sound sets', () => {
 		const soundSet = createSoundSetFromProject({
 			project: projectWithChannels(['One', 'Two', 'Three']),
 			name: 'Set',
-			id: 'set',
+			id: '00000000-0000-4000-8000-000000000104',
 			nowMs: 1
 		});
 		const result = applySoundSet({ soundSet, channels: [channel(9, 'One')] });
@@ -161,7 +166,7 @@ describe('sound sets', () => {
 		const soundSet = createSoundSetFromProject({
 			project: projectWithChannels(['One']),
 			name: 'Set',
-			id: 'set',
+			id: '00000000-0000-4000-8000-000000000105',
 			nowMs: 1
 		});
 		const channels = [channel(8, 'One'), channel(9, 'Extra')];
@@ -176,7 +181,7 @@ describe('sound sets', () => {
 		const soundSet = createSoundSetFromProject({
 			project: source,
 			name: 'Set',
-			id: 'set',
+			id: '00000000-0000-4000-8000-000000000106',
 			nowMs: 1
 		});
 		const result = applySoundSet({ soundSet, channels: source.channels });

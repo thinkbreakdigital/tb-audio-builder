@@ -1,7 +1,7 @@
 function normalizeName(name: string): string {
 	return name
 		.trim()
-		.toLocaleLowerCase()
+		.toLowerCase()
 		.replace(/[\s_-]+/g, '');
 }
 

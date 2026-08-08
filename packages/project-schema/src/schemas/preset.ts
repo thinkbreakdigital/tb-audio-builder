@@ -5,9 +5,30 @@ import type {
 	InstrumentDefinition
 } from '@thinkbreak/audio-runtime';
 import { z } from 'zod';
-import { AudioChannelDefinitionSchema } from './channel.js';
+import { AudioChannelDefinitionFieldsSchema, validateChannelInstrumentRole } from './channel.js';
 import { InstrumentDefinitionSchema } from './instrument.js';
 import { MasterSettingsSchema } from './project.js';
+
+const BuiltInIdSchema = z
+	.string()
+	.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+		message: 'built-in id must be a stable lowercase slug'
+	})
+	.refine((value) => !z.string().uuid().safeParse(value).success, {
+		message: 'built-in id must be a stable lowercase slug, not a UUID'
+	});
+const CustomIdSchema = z.string().uuid();
+
+function validatePresetId(value: { id: string; builtIn: boolean }, context: z.RefinementCtx): void {
+	const result = (value.builtIn ? BuiltInIdSchema : CustomIdSchema).safeParse(value.id);
+	if (!result.success) {
+		context.addIssue({
+			code: 'custom',
+			path: ['id'],
+			message: result.error.issues[0]?.message ?? 'id is invalid'
+		});
+	}
+}
 
 export interface InstrumentPreset {
 	id: string;
@@ -52,13 +73,15 @@ export const InstrumentPresetSchema: z.ZodType<InstrumentPreset> = z
 	.refine((preset) => preset.type === preset.definition.kind, {
 		path: ['type'],
 		message: 'type must match definition.kind'
-	});
+	})
+	.superRefine(validatePresetId);
 
 // Song-bound channel identity is deliberately omitted from reusable sound sets.
-export const SoundSetChannelSchema: z.ZodType<SoundSetChannel> = AudioChannelDefinitionSchema.omit({
-	id: true,
-	sourceTrackId: true
-});
+export const SoundSetChannelSchema: z.ZodType<SoundSetChannel> =
+	AudioChannelDefinitionFieldsSchema.omit({
+		id: true,
+		sourceTrackId: true
+	}).superRefine(validateChannelInstrumentRole);
 
 export const SoundSetSchema: z.ZodType<SoundSet> = z
 	.object({
@@ -72,10 +95,4 @@ export const SoundSetSchema: z.ZodType<SoundSet> = z
 		updatedAtMs: z.number().int().min(0)
 	})
 	.strict()
-	.refine(
-		(soundSet) => {
-			const names = soundSet.channels.map(({ name }) => name.trim().toLocaleLowerCase());
-			return new Set(names).size === names.length;
-		},
-		{ path: ['channels'], message: 'channel names must be unique after case-insensitive trimming' }
-	);
+	.superRefine(validatePresetId);

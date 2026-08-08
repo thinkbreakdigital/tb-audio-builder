@@ -1,6 +1,53 @@
-import type { AudioChannelDefinition, ChannelRole, CompiledSong } from '@thinkbreak/audio-runtime';
+import {
+	createDefaultPercussionInstrument,
+	createDefaultPitchedInstrument,
+	type AudioChannelDefinition,
+	type ChannelRole,
+	type CompiledSong,
+	type InstrumentDefinition
+} from '@thinkbreak/audio-runtime';
 import { createChannelForTrack, pairByNameThenPosition } from '@thinkbreak/project-schema';
 import type { TrackRoleSuggestion } from '@thinkbreak/midi-parser';
+
+function createInstrumentForRole(role: ChannelRole): InstrumentDefinition | null {
+	switch (role) {
+		case 'pitched':
+			return createDefaultPitchedInstrument();
+		case 'percussion':
+			return createDefaultPercussionInstrument();
+		case 'ignored':
+		case 'metadata':
+			return null;
+	}
+}
+
+/**
+ * Returns a role-compatible instrument without replacing an existing compatible assignment.
+ * The runtime factories return fresh deep clones, so every repair is safe to edit independently.
+ */
+export function reconcileChannelInstrument(
+	role: ChannelRole,
+	instrument: InstrumentDefinition | null
+): InstrumentDefinition | null {
+	if (role === 'ignored' || role === 'metadata') return null;
+	return instrument?.kind === role ? instrument : createInstrumentForRole(role);
+}
+
+/**
+ * Role changes replace playable instruments because pitched and percussion definitions are
+ * incompatible. A no-op role selection retains a valid current assignment while repairing any
+ * legacy mismatch.
+ */
+export function instrumentForRoleChange(input: {
+	currentRole: ChannelRole;
+	nextRole: ChannelRole;
+	currentInstrument: InstrumentDefinition | null;
+}): InstrumentDefinition | null {
+	if (input.currentRole === input.nextRole) {
+		return reconcileChannelInstrument(input.nextRole, input.currentInstrument);
+	}
+	return createInstrumentForRole(input.nextRole);
+}
 
 export function reconcileChannels(input: {
 	song: CompiledSong;
@@ -29,7 +76,7 @@ export function reconcileChannels(input: {
 			role: pair.left.role,
 			sourceTrackId: pair.right.track.id,
 			enabled: pair.left.enabled,
-			instrument: pair.left.instrument,
+			instrument: reconcileChannelInstrument(pair.left.role, pair.left.instrument),
 			mix: pair.left.mix
 		});
 	}
@@ -41,7 +88,7 @@ export function reconcileChannels(input: {
 			createChannelForTrack({
 				track: { ...unmatched.track, sourceTrackName: unmatched.name },
 				role,
-				instrument: null
+				instrument: createInstrumentForRole(role)
 			})
 		);
 	}

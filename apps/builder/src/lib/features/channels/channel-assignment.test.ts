@@ -4,8 +4,16 @@ import type {
 	CompiledSong,
 	CompiledTrack
 } from '@thinkbreak/audio-runtime';
+import {
+	createDefaultPercussionInstrument,
+	createDefaultPitchedInstrument
+} from '@thinkbreak/audio-runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { reconcileChannels } from './channel-assignment.js';
+import {
+	instrumentForRoleChange,
+	reconcileChannelInstrument,
+	reconcileChannels
+} from './channel-assignment.js';
 
 function makeTrack(id: string, sourceTrackName: string): CompiledTrack {
 	return {
@@ -67,7 +75,7 @@ beforeEach(() => {
 });
 
 describe('reconcileChannels', () => {
-	it('creates four channels with suggested roles on the first import', () => {
+	it('creates role-compatible assignments for every suggested role on the first import', () => {
 		const song = makeSong(['Drums', 'Bass', 'Keys', 'Notes']);
 		const result = reconcileChannels({
 			song,
@@ -82,6 +90,13 @@ describe('reconcileChannels', () => {
 			'pitched',
 			'metadata'
 		]);
+		expect(result.channels.map((channel) => channel.instrument?.kind ?? null)).toEqual([
+			'percussion',
+			'pitched',
+			'pitched',
+			null
+		]);
+		expect(result.channels[1]?.instrument).not.toBe(result.channels[2]?.instrument);
 		expect(result.preservedChannelCount).toBe(0);
 	});
 
@@ -89,8 +104,7 @@ describe('reconcileChannels', () => {
 		const oldSong = makeSong(['Drums', 'Bass', 'Keys', 'Lead']);
 		const existing = oldSong.tracks.map((track, index) =>
 			makeChannel(`channel-${index}`, track.sourceTrackName, 'pitched', {
-				instrument:
-					index === 0 ? ({ kind: 'pitched' } as AudioChannelDefinition['instrument']) : null,
+				instrument: createDefaultPitchedInstrument(),
 				mix: { gain: index / 10, pan: -0.2, muted: index === 1, soloed: index === 2 }
 			})
 		);
@@ -112,12 +126,39 @@ describe('reconcileChannels', () => {
 		expect(result.channels.map((channel) => channel.instrument)).toEqual(
 			existing.map((channel) => channel.instrument)
 		);
+		expect(result.channels[0]?.instrument).toBe(existing[0]?.instrument);
 		expect(result.channels.map((channel) => channel.mix)).toEqual(
 			existing.map((channel) => channel.mix)
 		);
 		expect(result.channels.map((channel) => channel.sourceTrackId)).toEqual(
 			newSong.tracks.map((track) => track.id)
 		);
+	});
+
+	it('preserves compatible assignments and deterministically repairs legacy role mismatches', () => {
+		const song = makeSong(['Lead', 'Drums', 'Missing', 'Mismatch', 'Ignore']);
+		const pitched = createDefaultPitchedInstrument();
+		const percussion = createDefaultPercussionInstrument();
+		const result = reconcileChannels({
+			song,
+			existingChannels: [
+				makeChannel('lead', 'Lead', 'pitched', { instrument: pitched }),
+				makeChannel('drums', 'Drums', 'percussion', { instrument: percussion }),
+				makeChannel('missing', 'Missing', 'pitched'),
+				makeChannel('mismatch', 'Mismatch', 'percussion', {
+					instrument: createDefaultPitchedInstrument()
+				}),
+				makeChannel('ignore', 'Ignore', 'ignored', { instrument: createDefaultPitchedInstrument() })
+			],
+			suggestions: suggestions(song, ['percussion', 'pitched', 'percussion', 'pitched', 'pitched'])
+		});
+
+		expect(result.channels[0]?.instrument).toBe(pitched);
+		expect(result.channels[1]?.instrument).toBe(percussion);
+		expect(result.channels[2]?.instrument?.kind).toBe('pitched');
+		expect(result.channels[2]?.instrument).not.toBeNull();
+		expect(result.channels[3]?.instrument?.kind).toBe('percussion');
+		expect(result.channels[4]?.instrument).toBeNull();
 	});
 
 	it('keeps a user-set role when a new suggestion disagrees', () => {
@@ -155,7 +196,7 @@ describe('reconcileChannels', () => {
 		expect(result.channels.map((channel) => channel.id)).toEqual(['bass']);
 	});
 
-	it('creates an added track with no instrument', () => {
+	it('creates an added playable track with a fresh matching default instrument', () => {
 		const song = makeSong(['Bass', 'Lead']);
 		const result = reconcileChannels({
 			song,
@@ -164,7 +205,7 @@ describe('reconcileChannels', () => {
 		});
 
 		expect(result.newChannelCount).toBe(1);
-		expect(result.channels[1]?.instrument).toBeNull();
+		expect(result.channels[1]?.instrument?.kind).toBe('pitched');
 	});
 
 	it('uses Track N for an empty track name', () => {
@@ -202,5 +243,55 @@ describe('reconcileChannels', () => {
 			'first-channel',
 			'second-channel'
 		]);
+	});
+});
+
+describe('role-to-instrument assignment', () => {
+	it.each([
+		['percussion', 'pitched', 'pitched'],
+		['pitched', 'percussion', 'percussion'],
+		['pitched', 'ignored', null],
+		['pitched', 'metadata', null]
+	] as const)(
+		'creates the matching default for a transition from %s to %s',
+		(currentRole, nextRole, expectedKind) => {
+			const previous =
+				currentRole === 'pitched'
+					? createDefaultPitchedInstrument()
+					: createDefaultPercussionInstrument();
+			const assigned = instrumentForRoleChange({
+				currentRole,
+				nextRole,
+				currentInstrument: previous
+			});
+
+			expect(assigned?.kind ?? null).toBe(expectedKind);
+			if (expectedKind !== null) expect(assigned).not.toBe(previous);
+		}
+	);
+
+	it('preserves a compatible instrument for a same-role selection and repairs an invalid one', () => {
+		const pitched = createDefaultPitchedInstrument();
+		expect(
+			instrumentForRoleChange({
+				currentRole: 'pitched',
+				nextRole: 'pitched',
+				currentInstrument: pitched
+			})
+		).toBe(pitched);
+
+		const repaired = reconcileChannelInstrument('percussion', pitched);
+		expect(repaired?.kind).toBe('percussion');
+		expect(repaired).not.toBe(pitched);
+	});
+
+	it('returns independent defaults for independently assigned playable channels', () => {
+		const first = reconcileChannelInstrument('pitched', null);
+		const second = reconcileChannelInstrument('pitched', null);
+		expect(first).not.toBe(second);
+		if (first?.kind === 'pitched' && second?.kind === 'pitched') {
+			first.oscillator.waveform = 'sine';
+			expect(second.oscillator.waveform).not.toBe('sine');
+		}
 	});
 });
