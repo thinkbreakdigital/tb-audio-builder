@@ -35,3 +35,31 @@ export const DEFAULT_CHANNEL_MIX = {
 
 export const DEFAULT_MASTER_GAIN = 0.8;
 export const DEFAULT_TEMPO_MULTIPLIER = 1;
+
+/** Tempo assumed when a song carries no tempo change at tick 0. */
+export const DEFAULT_TEMPO_BPM = 120;
+
+export const MIN_TEMPO_MULTIPLIER = 0.25;
+export const MAX_TEMPO_MULTIPLIER = 4;
+
+/**
+ * Time constant for every `setTargetAtTime` gain and pan ramp. Direct `.value` writes click, so
+ * the mixer never uses them during playback.
+ */
+export const PARAMETER_RAMP_TIME_CONSTANT_SECONDS = 0.01;
+
+/** Hard-stop ramp used when a choke group cuts a sounding voice. */
+export const CHOKE_STOP_RAMP_SECONDS = 0.005;
+
+export const ANALYSER_FFT_SIZE = 256;
+export const ANALYSER_SMOOTHING_TIME_CONSTANT = 0.4;
+
+/**
+ * A loop shorter than the look-ahead window wraps several times per scheduler invocation. Beyond
+ * this many wraps the loop region is a configuration error, not a fast loop.
+ */
+export const MAX_LOOP_WRAPS_PER_TICK = 64;
+
+/** `triggerPreview` starts just ahead of `currentTime` so the attack is never scheduled late. */
+export const PREVIEW_START_OFFSET_SECONDS = 0.005;
+export const PREVIEW_RELEASE_SECONDS = 1;
