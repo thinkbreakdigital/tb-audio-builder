@@ -42,11 +42,17 @@ export type FakeNodeKind =
 export interface FakeAudioNode {
 	readonly nodeKind: FakeNodeKind;
 	readonly connectedTo: readonly FakeAudioNode[]; // current outgoing connections, in connect() order
+	/**
+	 * Outgoing connections made to an `AudioParam` rather than a node — modulation routings such as
+	 * a vibrato LFO into `oscillator.detune`. Kept separate from `connectedTo` so graph-shape
+	 * assertions stay about the signal path.
+	 */
+	readonly connectedToParams: readonly FakeAudioParam[];
 	readonly connectCallCount: number;
 	readonly disconnectCallCount: number;
 	readonly disposed: boolean; // true once disconnect() with no argument was called
-	connect(destination: FakeAudioNode): FakeAudioNode;
-	disconnect(destination?: FakeAudioNode): void;
+	connect(destination: FakeAudioNode | FakeAudioParam): FakeAudioNode | FakeAudioParam;
+	disconnect(destination?: FakeAudioNode | FakeAudioParam): void;
 }
 
 export interface FakeGainNode extends FakeAudioNode {
@@ -59,11 +65,16 @@ export interface FakeOscillatorNode extends FakeAudioNode {
 	readonly frequency: FakeAudioParam;
 	readonly detune: FakeAudioParam;
 	type: OscillatorType;
+	onended: (() => void) | null;
 	/** Null until scheduled; `undefined` when started with no explicit time. */
 	readonly startedAtSeconds: number | null | undefined;
 	readonly stoppedAtSeconds: number | null | undefined;
+	/** Every `stop()` time in call order — the last one wins, as in the real API. */
+	readonly stopCalls: readonly (number | undefined)[];
 	start(when?: number): void;
 	stop(when?: number): void;
+	/** Test-only: fire the `ended` event. The fake clock never reaches a scheduled stop on its own. */
+	endNow(): void;
 }
 
 export interface FakeBiquadFilterNode extends FakeAudioNode {
@@ -188,15 +199,24 @@ function createFakeAudioParam(initialValue: number): FakeAudioParam {
 	return new FakeAudioParamImpl(initialValue);
 }
 
+function isFakeAudioParam(target: FakeAudioNode | FakeAudioParam): target is FakeAudioParam {
+	return target instanceof FakeAudioParamImpl;
+}
+
 abstract class FakeAudioNodeBase implements FakeAudioNode {
 	abstract readonly nodeKind: FakeNodeKind;
 	private readonly outgoing: FakeAudioNode[] = [];
+	private readonly outgoingParams: FakeAudioParam[] = [];
 	private connectCalls = 0;
 	private disconnectCalls = 0;
 	private isDisposed = false;
 
 	get connectedTo(): readonly FakeAudioNode[] {
 		return this.outgoing;
+	}
+
+	get connectedToParams(): readonly FakeAudioParam[] {
+		return this.outgoingParams;
 	}
 
 	get connectCallCount(): number {
@@ -211,21 +231,29 @@ abstract class FakeAudioNodeBase implements FakeAudioNode {
 		return this.isDisposed;
 	}
 
-	connect(destination: FakeAudioNode): FakeAudioNode {
+	connect(destination: FakeAudioNode | FakeAudioParam): FakeAudioNode | FakeAudioParam {
 		this.connectCalls += 1;
-		this.outgoing.push(destination);
+		if (isFakeAudioParam(destination)) {
+			this.outgoingParams.push(destination);
+		} else {
+			this.outgoing.push(destination);
+		}
 		return destination;
 	}
 
-	disconnect(destination?: FakeAudioNode): void {
+	disconnect(destination?: FakeAudioNode | FakeAudioParam): void {
 		this.disconnectCalls += 1;
 		if (destination === undefined) {
 			this.outgoing.length = 0;
+			this.outgoingParams.length = 0;
 			this.isDisposed = true;
 			return;
 		}
-		const index = this.outgoing.indexOf(destination);
-		if (index !== -1) this.outgoing.splice(index, 1);
+		const list: Array<FakeAudioNode | FakeAudioParam> = isFakeAudioParam(destination)
+			? this.outgoingParams
+			: this.outgoing;
+		const index = list.indexOf(destination);
+		if (index !== -1) list.splice(index, 1);
 	}
 }
 
@@ -239,10 +267,12 @@ class FakeOscillatorNodeImpl extends FakeAudioNodeBase implements FakeOscillator
 	readonly frequency = createFakeAudioParam(440);
 	readonly detune = createFakeAudioParam(0);
 	type: OscillatorType = 'sine';
+	onended: (() => void) | null = null;
 	// Recorded rather than acted on: phases 07/08 assert when a voice was scheduled to start and
 	// stop, the same way envelope shape is asserted through AudioParam automation.
 	startedAtSeconds: number | null | undefined = null;
 	stoppedAtSeconds: number | null | undefined = null;
+	readonly stopCalls: Array<number | undefined> = [];
 
 	start(when?: number): void {
 		this.startedAtSeconds = when;
@@ -250,6 +280,11 @@ class FakeOscillatorNodeImpl extends FakeAudioNodeBase implements FakeOscillator
 
 	stop(when?: number): void {
 		this.stoppedAtSeconds = when;
+		this.stopCalls.push(when);
+	}
+
+	endNow(): void {
+		this.onended?.();
 	}
 }
 

@@ -12,6 +12,8 @@ import {
 	DEFAULT_COMPRESSOR,
 	DEFAULT_MASTER_GAIN,
 	DEFAULT_TEMPO_MULTIPLIER,
+	MAX_TEMPO_MULTIPLIER,
+	MIN_TEMPO_MULTIPLIER,
 	PREVIEW_RELEASE_SECONDS,
 	PREVIEW_START_OFFSET_SECONDS
 } from '../constants.js';
@@ -20,13 +22,17 @@ import { createChannelBus } from '../mixer/channel-bus.js';
 import type { ChannelBus } from '../mixer/channel-bus.js';
 import { createMasterBus } from '../mixer/master-bus.js';
 import type { MasterBus } from '../mixer/master-bus.js';
+import { clamp } from '../synth/conversions.js';
+import { createPitchedVoiceFactory } from '../synth/pitched-voice.js';
 import { createSilentVoiceFactory } from '../synth/silent-voice.js';
+import { resolveMaxVoicesForChannel, resolveVoicePriority } from '../synth/voice-priority.js';
 import { createVoiceFactoryRegistry } from '../synth/voice.js';
-import type { VoiceFactory } from '../synth/voice.js';
+import type { PitchBendPoint, VoiceFactory } from '../synth/voice.js';
 import type { AudioChannelDefinition, ChannelMixSettings, ChannelRole } from '../types/channel.js';
 import type { InstrumentDefinition } from '../types/instrument.js';
 import type { BuilderProject, CompressorSettings } from '../types/project.js';
-import type { CompiledSong } from '../types/song.js';
+import type { CompiledSong, PitchBendEvent } from '../types/song.js';
+import { findFirstIndexAtOrAfter, type NumericKeyOf } from '../util/binary-search.js';
 import { createAudioContextController } from './audio-context.js';
 import { buildEventTimeline } from './event-timeline.js';
 import type { EventTimeline } from './event-timeline.js';
@@ -79,6 +85,8 @@ export interface AudioEngine {
 	dispose(): void;
 }
 
+const pitchBendTickOf: NumericKeyOf<PitchBendEvent> = (event) => event.tick;
+
 /** The engine's own mutable copy of a channel; the caller's project objects are never mutated. */
 interface EngineChannel {
 	id: string;
@@ -102,22 +110,33 @@ export function createAudioEngine(options?: {
 
 	const registry = createVoiceFactoryRegistry();
 	const factories = options?.voiceFactories ?? [
-		createSilentVoiceFactory('pitched').factory,
+		createPitchedVoiceFactory(),
+		// Percussion stays silent until phase 08 registers its factory.
 		createSilentVoiceFactory('percussion').factory
 	];
 	for (const factory of factories) registry.register(factory);
+
+	// Project state, valid with or without a context — everything here is applied to the graph when
+	// one exists, and re-applied when the graph is rebuilt (§4.9 rule 5).
+	const channels = new Map<string, EngineChannel>();
+	/** Source-track pitch bends per channel, sorted by tick; empty for channels with no MIDI. */
+	const channelPitchBends = new Map<string, readonly PitchBendEvent[]>();
 
 	const voiceManager = createVoiceManager({
 		registry,
 		limits: {
 			maxTotalVoices: DEFAULT_AUDIO_LIMITS.maxTotalVoices,
 			maxVoicesPerChannel: DEFAULT_AUDIO_LIMITS.maxVoicesPerChannel
+		},
+		// The drone cap is a property of the sound, so it is derived per channel from the instrument
+		// currently assigned to it rather than baked into the manager's limits (§4.2).
+		maxVoicesPerChannelOverride: (channelId) => {
+			const instrument = channels.get(channelId)?.instrument;
+			if (instrument === undefined || instrument === null) return undefined;
+			return resolveMaxVoicesForChannel(instrument, DEFAULT_AUDIO_LIMITS);
 		}
 	});
 
-	// Project state, valid with or without a context — everything here is applied to the graph when
-	// one exists, and re-applied when the graph is rebuilt (§4.9 rule 5).
-	const channels = new Map<string, EngineChannel>();
 	let tempoMap: TempoMap | null = null;
 	let timeline: EventTimeline | null = null;
 	let masterGain = DEFAULT_MASTER_GAIN;
@@ -180,6 +199,43 @@ export function createAudioEngine(options?: {
 	}
 
 	/**
+	 * Bends that fall inside the note's half-open tick span, mapped onto audio-context time.
+	 *
+	 * The mapping is anchored on the note's own `startAtSeconds` rather than re-deriving the
+	 * scheduler's origin: the two are equal by construction, and using the value the scheduler just
+	 * handed us keeps bends aligned even when the note was dispatched inside a loop wrap, where the
+	 * origin has already moved on. Both ends of the span are located by binary search, so a long
+	 * bend list is never scanned per note (§4.4).
+	 */
+	function pitchBendPointsForNote(
+		channelId: string,
+		startTick: number,
+		endTick: number,
+		startAtSeconds: number
+	): readonly PitchBendPoint[] | undefined {
+		const bends = channelPitchBends.get(channelId);
+		if (bends === undefined || bends.length === 0 || tempoMap === null) return undefined;
+
+		const firstIndex = findFirstIndexAtOrAfter(bends, startTick, pitchBendTickOf);
+		const endIndex = findFirstIndexAtOrAfter(bends, endTick, pitchBendTickOf);
+		if (endIndex <= firstIndex) return undefined;
+
+		const effectiveMultiplier = clamp(tempoMultiplier, MIN_TEMPO_MULTIPLIER, MAX_TEMPO_MULTIPLIER);
+		const noteStartSongSeconds = tickToSeconds(tempoMap, startTick);
+		const points: PitchBendPoint[] = [];
+		for (let index = firstIndex; index < endIndex; index += 1) {
+			const bend = bends[index] as PitchBendEvent;
+			points.push({
+				atSeconds:
+					startAtSeconds +
+					(tickToSeconds(tempoMap, bend.tick) - noteStartSongSeconds) / effectiveMultiplier,
+				value: bend.value
+			});
+		}
+		return points;
+	}
+
+	/**
 	 * Channels are resolved here, at dispatch time, never in the timeline (§4.3 rule 2, §4.9
 	 * rule 2), so instrument and enablement edits take effect without a rebuild. Mute and solo
 	 * deliberately do NOT skip dispatch: they are gain-only on the bus, so un-muting mid-note is
@@ -204,9 +260,15 @@ export function createAudioEngine(options?: {
 				releaseAtSeconds,
 				destination: bus.input,
 				context,
-				sequence: event.sequence
+				sequence: event.sequence,
+				pitchBendPoints: pitchBendPointsForNote(
+					event.channelId,
+					event.tick,
+					event.endTick,
+					startAtSeconds
+				)
 			},
-			'normal'
+			resolveVoicePriority(channel.instrument)
 		);
 	};
 
@@ -272,6 +334,8 @@ export function createAudioEngine(options?: {
 		loadProject(input): void {
 			ensureNotDisposed('loadProject()');
 			channels.clear();
+			channelPitchBends.clear();
+			const tracksById = new Map(input.song.tracks.map((track) => [track.id, track]));
 			for (const definition of input.channels) {
 				channels.set(definition.id, {
 					id: definition.id,
@@ -280,6 +344,11 @@ export function createAudioEngine(options?: {
 					instrument: definition.instrument,
 					mix: { ...definition.mix }
 				});
+				const track =
+					definition.sourceTrackId === null ? undefined : tracksById.get(definition.sourceTrackId);
+				if (track !== undefined && track.pitchBends.length > 0) {
+					channelPitchBends.set(definition.id, track.pitchBends);
+				}
 			}
 			loopEnabled = input.transport.loopEnabled;
 			loopStartTick = input.transport.loopStartTick;
@@ -439,7 +508,7 @@ export function createAudioEngine(options?: {
 					destination: bus.input,
 					context
 				},
-				'normal'
+				resolveVoicePriority(channel.instrument)
 			);
 		},
 

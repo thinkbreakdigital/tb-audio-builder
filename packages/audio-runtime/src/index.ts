@@ -8,6 +8,11 @@ export * from './util/binary-search.js';
 export * from './synth/conversions.js';
 export * from './synth/voice.js';
 export * from './synth/silent-voice.js';
+export * from './synth/envelope.js';
+export * from './synth/voice-priority.js';
+export * from './synth/pitched-voice.js';
+
+export * from './presets/index.js';
 
 export * from './engine/audio-context.js';
 export * from './engine/tempo-map.js';

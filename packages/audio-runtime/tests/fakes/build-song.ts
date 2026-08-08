@@ -27,6 +27,7 @@ import type {
 	CompiledNote,
 	CompiledSong,
 	CompiledTrack,
+	PitchBendEvent,
 	TempoChange
 } from '../../src/types/song.js';
 import { assertNever } from '../../src/util/assert-never.js';
@@ -54,6 +55,8 @@ export interface BuildChannelInput {
 	/** Defaults to the generated track; `null` models MIDI that was removed. */
 	sourceTrackId?: string | null;
 	notes?: readonly BuildNoteInput[];
+	/** Source-track pitch bends, sorted by tick. Empty unless a test exercises bend delivery. */
+	pitchBends?: readonly PitchBendEvent[];
 }
 
 export interface BuildSongInput {
@@ -197,7 +200,7 @@ export function buildSong(input: BuildSongInput): BuiltProject {
 			sourceTrackName: channelInput.name ?? channelId,
 			midiChannel: index,
 			notes,
-			pitchBends: [],
+			pitchBends: channelInput.pitchBends ?? [],
 			modulationEvents: [],
 			volumeEvents: []
 		});

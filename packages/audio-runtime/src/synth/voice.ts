@@ -23,6 +23,12 @@ export interface Voice {
 	dispose(): void;
 }
 
+/** A pitch-wheel position already resolved to an audio-context time by the engine. */
+export interface PitchBendPoint {
+	atSeconds: number;
+	value: number; // -1..1
+}
+
 export interface VoiceStartRequest {
 	channelId: string;
 	instrument: InstrumentDefinition;
@@ -33,6 +39,8 @@ export interface VoiceStartRequest {
 	releaseAtSeconds: number;
 	destination: AudioNode;
 	context: BaseAudioContext;
+	/** Pitch-bend events from the source track that fall inside this note, in audio-context seconds. */
+	pitchBendPoints?: readonly PitchBendPoint[];
 	/**
 	 * Deliberate extension beyond spec §4.6. Timeline event `sequence` that produced this note. The
 	 * manager breaks voice-stealing ties with it so allocation is deterministic regardless of

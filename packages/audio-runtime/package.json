@@ -16,6 +16,7 @@
 		"test": "vitest run"
 	},
 	"devDependencies": {
+		"@thinkbreak/project-schema": "workspace:*",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.8"
 	}

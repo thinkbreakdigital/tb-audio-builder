@@ -24,6 +24,20 @@ Accepted file extensions are `.mid` and `.midi`, from `SUPPORTED_MIDI_EXTENSIONS
 Notes are sorted by tick and MIDI note number. Pitch-bend, modulation, and track-volume events are
 sorted by tick. Marker and header changes are sorted by tick.
 
+## Events compiled but not played
+
+Compiling an event and applying it at playback are separate steps, and not everything the parser
+keeps reaches the audio runtime yet:
+
+| Compiled event                        | Applied at playback                                                                                                                          |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pitchBends`                           | Yes. Bends inside a note are scheduled onto the voice's detune, scaled by the instrument's `pitchBendRangeSemitones`, and skipped when it is 0. |
+| `modulationEvents` (CC1)               | **No.** Parsed, stored, and carried through save, sync, and export, but the runtime ignores them in this release.                              |
+| `volumeEvents` (CC7)                   | **No.** Same: stored but not applied. Channel gain comes from the mixer, not from the MIDI track.                                              |
+
+They are kept rather than dropped so a re-import never loses data and a later release can apply them
+without asking the user to import the file again.
+
 ## Silently ignored events
 
 These events are not read into the compiled song, and they also do not produce a warning. Those are
