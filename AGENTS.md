@@ -33,6 +33,15 @@ Three rules, each of which has broken a deploy at least once:
 
 Full rationale in `spec/implementation/00-conventions.md` §2.2, §2.3, and §3.1.
 
+## No browser automation
+
+Do not reach for Playwright, Cypress, chromium-cli, or any other browser-automation tool to
+visually verify UI changes — not even ad hoc, outside the test suite. `spec/implementation/
+00-conventions.md` §9 excludes it deliberately: "Vitest only. No Playwright, Cypress, or other
+browser automation — the kickoff deliberately excludes end-to-end tests." Verify UI changes by
+reading the component code and token usage, and by asking me to look at the running dev server
+myself.
+
 ## Delegating to Codex workers
 
 Delegate whenever executing an implementation plan or document. The primary agent owns integration and verification. Do not let delegated agents delegate again.

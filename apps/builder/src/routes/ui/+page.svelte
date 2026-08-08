@@ -68,6 +68,14 @@
 						<td class="spec">
 							<span class="source">{row.source}</span>
 							<span class="guidance">{row.guidance}</span>
+							{#if row.variants !== undefined}
+								<span class="variants-label">Also covers</span>
+								<ul>
+									{#each row.variants as variant (variant)}
+										<li>{variant}</li>
+									{/each}
+								</ul>
+							{/if}
 						</td>
 					</tr>
 				{/each}
@@ -177,5 +185,12 @@
 
 	.guidance {
 		display: block;
+	}
+
+	.variants-label {
+		display: block;
+		margin: var(--space-2) 0 var(--space-1);
+		color: var(--color-text-muted);
+		font-weight: 700;
 	}
 </style>

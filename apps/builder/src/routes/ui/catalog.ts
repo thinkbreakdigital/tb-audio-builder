@@ -1,7 +1,8 @@
 /**
- * Reference catalog of every individual UI element phases 09B (instrument editor) and 10B
- * (transport + global mixer) need, named the way a mixing board or hardware synth names it.
- * Data only — the `/ui` page renders it and nothing is wired to project state or audio.
+ * Reference catalog of the UI elements phases 09B (instrument editor) and 10B (transport + global
+ * mixer) need, named the way a mixing board or hardware synth names it. One row per visually
+ * distinct element — parts that look the same are merged and their differences listed in
+ * `variants`. Data only; the `/ui` page renders it and nothing is wired to project state or audio.
  */
 
 export interface UiElementRow {
@@ -18,6 +19,8 @@ export interface UiElementRow {
 	source: string;
 	/** The instruction, or a recommendation where the specs are silent. */
 	guidance: string;
+	/** Everything this row absorbed: same visual element, different content or behavior. */
+	variants?: readonly string[];
 }
 
 export interface UiElementGroup {
@@ -43,39 +46,73 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 					'Filter resonance',
 					'Pitch bend range',
 					'Max voices',
-					'Percussion root note (stepped)',
-					'Oscillator layer gain',
+					'Percussion root note',
+					'Oscillator layer volume',
 					'Oscillator start / end frequency (banked)',
 					'Pitch decay',
 					'Oscillator layer A/D/S/R (banked)',
 					'Noise layer cutoff',
 					'Noise layer resonance',
-					'Noise layer gain',
+					'Noise layer volume',
 					'Noise layer A/D/S/R (banked)'
 				],
 				mixer: [
-					'Channel pan (dedicated, never banked)',
+					'Channel pan',
 					'Master compressor threshold',
 					'Master compressor knee',
 					'Master compressor ratio',
 					'Master compressor attack',
 					'Master compressor release'
 				],
-				transport: ['Tempo multiplier (dedicated, never banked)'],
+				transport: ['Tempo multiplier'],
 				source: '09B §4.2 · 10B §4.4–4.5 · conventions §5.2',
 				guidance:
-					'One rotary implementation only; a second is a defect. Visually rotary over a native <input type="range"> so the accessibility tree keeps slider semantics. Real label, editable number input below, visible value/unit text, labelled reset. Vertical pointer drag, Shift uses fineStep, Arrow / Shift+Arrow / PageUp / PageDown / Home / End, double-click reset, pointer cancellation restores the last commit. Log position mapping for Hz parameters while the number field stays linear. onlive touches audio only; oncommit writes the project once. No canvas, gradient, shadow, ornamental animation, or pointer-only interaction.'
+					'One rotary implementation only; a second is a defect. Visually rotary over a native <input type="range"> so the accessibility tree keeps slider semantics. The whole unit is one design: label above, dial, editable number field beneath it, value + unit text, labelled reset. No canvas, gradient, shadow, ornamental dial animation, or pointer-only interaction. Vertical drag, Shift for the fine step, arrow / page / home / end keys, double-click reset.',
+				variants: [
+					'Continuous — the default; free decimals within min/max.',
+					'Stepped — integer-only detents for octave, semitone, max voices, root note.',
+					'Log-mapped — cutoff and start/end frequency travel logarithmically while the number field stays linear in Hz; the marker always shows the real value.',
+					'Readout format changes per parameter, the control does not: plain value + unit, C4 (60) for root note, C / L50 / R30 for pan, effective BPM for tempo.',
+					'Numeric field and reset button are part of this component, not separate elements.'
+				]
+			},
+			{
+				slug: 'dual-rotary-pot',
+				name: 'DualRotaryPot',
+				file: 'components/DualParameterKnob.svelte',
+				instrument: [
+					'Filter cutoff + resonance',
+					'Noise layer cutoff + resonance',
+					'Vibrato rate + depth',
+					'Oscillator start + end frequency'
+				],
+				mixer: ['Master compressor threshold + ratio', 'Master compressor attack + release'],
+				transport: [],
+				source: 'Proposed — not in 09B/10B; needs approval before implementation',
+				guidance:
+					'Concentric pot in the guitar-pedal idiom: an outer ring and an inner disc sharing one footprint, with a paired label reading OUTER —o— INNER. Only pair parameters of the same family — filter with filter, time with time — because a cross-family pair reads as an accident. Built as two RotaryPot instances composed into one dial, never as a second rotary implementation. Removes about seven dials from the instrument editor and master strip.',
+				variants: [
+					'Ring thickness is the critical dimension: a thin outer ring is a poor pointer target at 200% zoom, which both phases require.',
+					'Two native ranges, two real labels. The two numeric fields are where the space saving partly returns — resolve with one shared value line (1.2kHz / 4.0Q) that expands on focus, or accept the fields side by side.',
+					'Retires two approved two-member banks (vibrato Rate/Depth, oscillator Start/End) by showing both values at once instead of one. That edits the exact bank list in 09B §4.3 and is a spec amendment, not an implementation detail.',
+					'Ruled out for semitone + fine tune: both already live in the three-way O/S/F bank, and pairing them concentrically would either break that bank or give the same value two controls, which 09B acceptance criterion 2 forbids.',
+					'Ruled out for channel volume + pan (conventions §5.2 forbids the pairing and requires a fader), for A/D/S/R (four parameters, any split is arbitrary), and for the two layer volumes (different sections; pairing them would invent a balance control absent from the schema).'
+				]
 			},
 			{
 				slug: 'linear-pot',
 				name: 'LinearPot',
 				file: 'features/mixer/VerticalParameterFader.svelte',
 				instrument: [],
-				mixer: ['Channel gain fader', 'Master gain'],
+				mixer: ['Channel volume fader', 'Master volume'],
 				transport: [],
 				source: '10B §4.4–4.5 · conventions §5.2',
 				guidance:
-					'Native vertical range plus editable number and reset, sharing RotaryPot parsing, formatting, live/commit, keyboard, and error behavior. Channel gain stays a fader and is never banked with pan. Open point: 10B §4.5 calls master gain "dedicated" without naming the form — recommendation is LinearPot so the master region reads as a strip.'
+					'Vertical travel instead of rotation; everything else matches RotaryPot — same number field, reset, keyboard, live/commit, and error behavior. Channel volume is always a fader and is never banked with pan. Design the throw length so a 16-channel rail still fits at 1024×640.',
+				variants: [
+					'Master volume — 10B §4.5 only says "dedicated" without naming the form. Recommendation: the same fader, so Master reads as a strip.',
+					'Labelled Volume everywhere in the UI, because on a board Gain is the input trim and Volume is the fader. The schema keeps mix.gain and master.gain untouched — this is a display name only, and a deliberate deviation from the literal wording of 10B §4.3.'
+				]
 			},
 			{
 				slug: 'scrub-slider',
@@ -86,11 +123,14 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: ['Song position seek'],
 				source: '10B §4.1',
 				guidance:
-					'Labelled horizontal native range. Scrubbing holds a local draft so poller updates cannot fight the thumb; change commits, cancel restores the engine position. Seeking never starts audio. Disabled with no song loaded, without disabling project editing.'
+					'Horizontal native range that stretches across the transport bar — the one place a horizontal slider is allowed. Needs a visible label, a wide hit target, and a disabled look for the no-song state that does not read as broken.',
+				variants: [
+					'Scrubbing holds a local draft so poller updates cannot fight the thumb; the thumb must not jump mid-drag.'
+				]
 			},
 			{
-				slug: 'bank-switch',
-				name: 'BankSwitch',
+				slug: 'segment-switch',
+				name: 'SegmentSwitch',
 				file: 'components/SegmentedParameterSelector.svelte',
 				instrument: [
 					'Tuning O / S / F',
@@ -98,46 +138,20 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 					'Vibrato Rate / Depth',
 					'Oscillator layer A / D / S / R',
 					'Noise layer A / D / S / R',
-					'Oscillator Start / End frequency'
+					'Oscillator Start / End frequency',
+					'Mono / Poly voice mode'
 				],
 				mixer: [],
 				transport: [],
 				source: '09B §4.3 · conventions §5.2',
 				guidance:
-					"Named native radio group inside a <fieldset>. Compact sliding/highlighted active segment about 1.25rem high — the small toggle family, not the large ROI selector. Every initial carries a full accessible name plus hover/focus help, and the active parameter's complete name stays visible. Reduced motion makes the indicator instant. Selecting a member swaps spec and value only and performs zero audio, project, autosave, or sync work; the selection is never persisted, synced, or exported."
-			},
-			{
-				slug: 'banked-pot',
-				name: 'BankedPot',
-				file: 'components/ParameterBank.svelte',
-				instrument: ['The six PARAMETER_BANKS entries only'],
-				mixer: [],
-				transport: [],
-				source: '09B §4.3 · conventions §5.2',
-				guidance:
-					'BankSwitch plus one shared RotaryPot. Reads options through parameterBankOptions(bank, definition); a kind mismatch is a wiring defect, not a runtime fallback. Do not bank filters, channel gain/pan, layer gains, root note, pitch decay, bend range, voice controls, master, compressor, tempo, or unrelated units.'
-			},
-			{
-				slug: 'value-entry',
-				name: 'ValueEntry',
-				file: 'part of ParameterKnob / VerticalParameterFader',
-				instrument: ['Every pot’s number field'],
-				mixer: ['Gain, pan, and compressor number fields'],
-				transport: ['Tempo number field'],
-				source: 'conventions §5.2 · §6',
-				guidance:
-					'Free typing, commits on change or Enter. Empty, malformed, non-finite, and out-of-range values show a linked error and leave the committed value unchanged; Escape restores it. Every value is editable without touching a slider.'
-			},
-			{
-				slug: 'recall-default',
-				name: 'RecallDefault',
-				file: 'part of ParameterKnob / VerticalParameterFader',
-				instrument: ['Every pot'],
-				mixer: ['Every pot and fader'],
-				transport: ['Tempo'],
-				source: 'conventions §5.2',
-				guidance:
-					'Labelled reset button restoring the parameter default. Never icon-only. Double-click on the control is an additional path to the same action, never the only one.'
+					"Named native radio group in a <fieldset>, about 1.25rem high, with a sliding or highlighted active segment — the small toggle family, not the large ROI selector. The active parameter's full name stays visible next to it. Reduced motion makes the indicator instant. Selecting a segment only swaps which value the pot edits.",
+				variants: [
+					'Banked pot — the dominant layout: this switch sits directly above one shared RotaryPot. Design the pair together; there is no separate component for it.',
+					'Two-position with full words for Mono / Poly, rather than initials. Recommended over a "Polyphonic" checkbox, which hides the mono state.',
+					'Compact initials need hover and focus help carrying the full name.',
+					'Vibrato Rate/Depth and oscillator Start/End are proposed to move to DualRotaryPot, leaving the three-way O/S/F tuning bank, both four-member A/D/S/R banks, and Mono/Poly here.'
+				]
 			}
 		]
 	},
@@ -154,13 +168,18 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 					'Vibrato enabled',
 					'Oscillator layer enabled',
 					'Noise layer enabled',
-					'Include in playback (channel header)'
+					'Oscillator pitch tracking',
+					'Noise filter tracking',
+					'Include in playback'
 				],
 				mixer: ['Compressor enabled'],
 				transport: ['Loop enabled'],
-				source: '10B §4.2 · conventions §5',
+				source: '09B §4.4 · 10B §4.2',
 				guidance:
-					'Reuse as delivered. Labelled native checkbox bound by for/id. Disabled sections stay visible rather than unmounting, so toggling one never jumps the layout.'
+					'Labelled native checkbox, reused as delivered. The design question is what an off section looks like: disabled controls stay visible and readable so nothing jumps, which means a dimmed-but-legible treatment rather than hiding.',
+				variants: [
+					'Tracking toggles carry required help text underneath — off: fixed single-hit sound; on: pitch follows incoming MIDI relative to the root note.'
+				]
 			},
 			{
 				slug: 'selector-switch',
@@ -172,35 +191,13 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 					'Percussion oscillator waveform',
 					'Noise layer filter type',
 					'Voice steal mode',
-					'Channel role (channel header)'
+					'Channel role'
 				],
 				mixer: [],
 				transport: [],
 				source: '09B §4.4',
 				guidance:
-					'Recommendation: reuse the native select rather than adding a second segmented family — BankSwitch is reserved for bank selection. These are all "direct" controls in 09B §4.4, reachable without a bank.'
-			},
-			{
-				slug: 'mode-switch',
-				name: 'ModeSwitch',
-				file: 'components/ModeSwitch.svelte',
-				instrument: ['Mono / Poly voice mode'],
-				mixer: [],
-				transport: [],
-				source: '09B §4.4',
-				guidance:
-					'Recommendation: a two-position named radio group showing both words, built on the BankSwitch shell but with full labels instead of initials. A checkbox labelled "Polyphonic" is rejected because it hides the mono state behind an unchecked box.'
-			},
-			{
-				slug: 'tracking-switch',
-				name: 'TrackingSwitch',
-				file: 'components/TrackingSwitch.svelte',
-				instrument: ['Oscillator layer pitchTracksNote', 'Noise layer filterTracksNote'],
-				mixer: [],
-				transport: [],
-				source: '09B §4.4',
-				guidance:
-					'ToggleSwitch plus mandatory contextual help. Off states the channel is a fixed single-hit sound. On states pitch follows incoming MIDI relative to the root note.'
+					'Native select, reused as delivered. Recommendation: keep these as selects rather than adding a second segmented family — SegmentSwitch is reserved for bank selection and Mono/Poly.'
 			},
 			{
 				slug: 'latching-switch',
@@ -211,18 +208,18 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '10B §4.3 · conventions §5',
 				guidance:
-					'Text toggles carrying aria-pressed. The word MUTE or SOLO in an active style is the state; color alone never communicates it.'
+					'Text toggle carrying aria-pressed. The engaged state must read without color — weight, fill, and border all change, and the word MUTE or SOLO stays legible in grayscale. Sized to sit two-across in a compact strip.'
 			},
 			{
 				slug: 'text-entry',
 				name: 'TextEntry',
 				file: 'components/TextField.svelte (exists)',
-				instrument: ['Channel name', 'Choke group', 'Patch name (save dialog)'],
+				instrument: ['Channel name', 'Choke group', 'Patch name'],
 				mixer: ['Loop start bars.beats', 'Loop end bars.beats', 'Sound set name'],
 				transport: [],
 				source: '10B §4.2',
 				guidance:
-					'Reuse as delivered. Loop fields render the 10A validation message and mutate nothing while the text is invalid.'
+					'Reused as delivered. Needs a narrow variant for the bars.beats fields that still shows the full value, and an error state that does not resize the field.'
 			},
 			{
 				slug: 'momentary-button',
@@ -236,23 +233,16 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 					'Normalize',
 					'Save sound set',
 					'Apply sound set',
-					'CLIP reset'
+					'Clip reset'
 				],
-				transport: ['Resume audio'],
-				source: '09B §4.6 · 10B §4.1–4.6',
+				transport: ['Return to start', 'Play / Pause', 'Stop', 'Resume audio'],
+				source: '09B §4.6 · 10B §4.1 · §4.5',
 				guidance:
-					'Reuse as delivered. Destructive and project-wide actions (normalize, sound-set apply, role change) route through a confirmation that states what will change.'
-			},
-			{
-				slug: 'transport-button',
-				name: 'TransportButton',
-				file: 'features/transport/TransportControls.svelte',
-				instrument: [],
-				mixer: [],
-				transport: ['Return to start', 'Play / Pause', 'Stop'],
-				source: '10B §4.1',
-				guidance:
-					'Song-dependent controls disable with no song loaded without disabling project editing. Space toggles Play/Pause except when focus is in an input, select, textarea, button, contenteditable, or dialog; visible help states the shortcut. Text labels, no icon fonts or emoji.'
+					'One text button, reused as delivered. Transport buttons are the same button with text labels — no icon fonts, no emoji. The design work is the disabled state: song-dependent controls go inert with no song while project editing stays live, so disabled must read as "not yet" rather than "broken".',
+				variants: [
+					'Play / Pause is one button that swaps its label, not two.',
+					'Default, danger, and disabled treatments.'
+				]
 			},
 			{
 				slug: 'step-button',
@@ -263,7 +253,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '09B §4.6',
 				guidance:
-					'Arrow glyphs require full accessible names and hover/focus help; ambiguous icon-only actions are prohibited. Stepping auditions but never moves bank selection.'
+					'Small square glyph button flanking the patch name. Arrows carry full accessible names plus hover and focus help — an unlabelled arrow is not acceptable on its own.'
 			},
 			{
 				slug: 'audition-pad',
@@ -274,18 +264,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '09B §4.7',
 				guidance:
-					'Press-and-hold through engineClient.beginPreview. Pointer release, key release, pointer cancel, lost capture, blur, selection change, role change, dialog close, and unmount each release the handle exactly once. Audio failure leaves all editing enabled and shows a gesture-driven retry.'
-			},
-			{
-				slug: 'channel-select-button',
-				name: 'ChannelSelectButton',
-				file: 'features/mixer/ChannelStrip.svelte',
-				instrument: [],
-				mixer: ['Strip name — selects the channel and opens Instrument'],
-				transport: [],
-				source: '10B §4.3 · conventions §5.3',
-				guidance:
-					'Clicking the name selects the channel, switches the top-level view to Instrument, and focuses its heading. This performs zero project, audio, autosave, or sync work.'
+					'A press-and-hold pad, larger than a normal button, with a held state distinct from hover and focus so it is obvious the sound is sustaining. Keyboard hold must look identical to pointer hold.'
 			}
 		]
 	},
@@ -296,26 +275,17 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 			{
 				slug: 'control-section',
 				name: 'ControlSection',
-				file: 'components/ControlGroup.svelte',
+				file: 'components/ControlGroup.svelte · components/Panel.svelte (exists)',
 				instrument: [
 					'Pitched: Oscillator, Amplitude, Filter, Modulation, Voices',
-					'Percussion: Instrument, Oscillator layer, Noise layer'
+					'Percussion: Instrument, Oscillator layer, Noise layer',
+					'Channel header'
 				],
 				mixer: ['Loop', 'Master', 'Sound sets'],
 				transport: [],
-				source: '09B §4.4',
+				source: '09B §4.4 · conventions §5',
 				guidance:
-					'Labelled fieldset-style section. Disabled sections remain visible so the layout never jumps. The whole layout must wrap legibly at 1024×640 and at 200% zoom.'
-			},
-			{
-				slug: 'panel',
-				name: 'Panel',
-				file: 'components/Panel.svelte (exists)',
-				instrument: ['Channel header', 'Instrument body'],
-				mixer: ['Mixer regions'],
-				transport: [],
-				source: 'phase 04',
-				guidance: 'Reuse as delivered. Flat surface separated by a 1px border.'
+					'The bordered, titled surface everything else sits inside — Panel is the outer level and ControlGroup the inner one; visually the same treatment at two depths. Flat 1px borders, no shadow. Disabled sections stay in place and keep their values readable. Must wrap legibly at 1024×640 and 200% zoom.'
 			},
 			{
 				slug: 'view-selector',
@@ -326,7 +296,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: 'conventions §5.3',
 				guidance:
-					'Exactly two top-level tabs. Semantic, keyboard-operable, and ephemeral. No nested channelTab and no second mixer surface.'
+					'Exactly two top-level tabs, already built. Listed so the density and weight of the rest of the workspace are designed against it.'
 			},
 			{
 				slug: 'patch-header',
@@ -337,20 +307,24 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '09B §4.6',
 				guidance:
-					'Browse and Save As are visible actions, not hidden in a menu. Preset changes never move bank selection.'
+					'One horizontal bar at the top of the instrument editor. Browse and Save As stay visible rather than hiding in a menu, and the name must hold a long patch title without pushing the arrows off the row.',
+				variants: [
+					'Modified marker sits beside the name as text, not a colored dot — design it inline so the name does not reflow when it appears.'
+				]
 			},
 			{
 				slug: 'channel-strip',
 				name: 'ChannelStrip',
 				file: 'features/mixer/ChannelStrip.svelte',
 				instrument: [],
-				mixer: [
-					'Order: name and type, LinearPot gain, Pan RotaryPot, MUTE/SOLO, LevelMeter, SignalStatus'
-				],
+				mixer: ['Order: name and type, volume fader, pan pot, MUTE / SOLO, meter, signal status'],
 				transport: [],
 				source: '10B §4.3',
 				guidance:
-					'Compact vertical strip for played channels only. Never exposes role, reset, waveform, envelope, filter, or instrument preset controls — those belong to Instrument.'
+					'The core density decision: one compact column holding six things, repeated up to sixteen times. Never exposes role, reset, waveform, envelope, filter, or preset controls. Fix the column width here and everything else follows.',
+				variants: [
+					'The channel name is itself the navigation control — clicking it selects the channel and opens Instrument, so it needs an interactive affordance while still reading as a title.'
+				]
 			},
 			{
 				slug: 'master-strip',
@@ -358,26 +332,26 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				file: 'features/mixer/MasterStrip.svelte',
 				instrument: [],
 				mixer: [
-					'Master gain',
-					'Compressor Enabled + Threshold / Knee / Ratio / Attack / Release',
-					'LevelMeter',
-					'CLIP reset'
+					'Master volume',
+					'Compressor enabled + threshold / knee / ratio / attack / release',
+					'Meter',
+					'Clip reset'
 				],
 				transport: [],
 				source: '10B §4.5',
 				guidance:
-					'Pinned or clearly separated from the strip rail; overflow must never overlap it. None of its parameters is banked. Disabled compressor values stay visible and readable.'
+					'A wider strip carrying six pots more than a channel strip, pinned or clearly separated so scrolling channels never slide under it. Disabled compressor values stay visible and readable.'
 			},
 			{
 				slug: 'strip-rail',
 				name: 'StripRail',
 				file: 'features/mixer/MixerView.svelte',
 				instrument: [],
-				mixer: ['Labelled horizontally scrollable row of channel strips'],
+				mixer: ['Horizontally scrollable row of channel strips'],
 				transport: [],
 				source: '10B §4.3 · conventions §5.3',
 				guidance:
-					'Horizontal scrolling is the required overflow strategy, not a fallback. The region is labelled and keyboard-scrollable. At 1024×640 and 200% zoom strips stay usable — never shrink controls below usable size and never overlap Master. Verify with realistic 16-channel names.'
+					'Horizontal scrolling is the required overflow strategy, not a fallback — so the scroll edge, the labelled region, and the separation from Master are all design decisions. Strips never shrink below usable size to avoid scrolling. Test with sixteen realistic channel names.'
 			},
 			{
 				slug: 'unassigned-list',
@@ -388,7 +362,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '10B §4.3',
 				guidance:
-					'Each such channel appears exactly once, with no mix controls, no meter, and no instrument controls.'
+					'A plain list below the rail. Visually quieter than a strip so it reads as excluded, while still being legible and selectable. No mix controls and no meter.'
 			},
 			{
 				slug: 'advanced-drawer',
@@ -399,18 +373,18 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '09B §4.1',
 				guidance:
-					'A clearly labelled Advanced region holds metadata and ignored-channel state so it never competes with the sound-design controls.'
+					'A labelled disclosure that keeps rarely-touched state out of the sound-design flow without hiding it. Closed by default; the label states what is inside.'
 			},
 			{
 				slug: 'dialog',
 				name: 'Dialog',
-				file: 'components/ConfirmDialog.svelte (exists) + generic dialog shell',
+				file: 'components/ConfirmDialog.svelte (exists) + generic shell',
 				instrument: ['Patch browser', 'Patch save', 'Role-change confirmation'],
 				mixer: ['Sound-set apply', 'Normalize confirmation'],
 				transport: [],
 				source: '09B §4.6 · 10B §4.5–4.6',
 				guidance:
-					'Cancel, Escape, close, and channel change all perform zero work, restore the committed sound, and release any preview handle. Apply is the only path that commits.'
+					'One modal shell: title, body, and a footer action row. Sizes range from a one-line confirmation to a full patch browser, so the body scrolls while the footer stays put. Cancel and Escape always perform zero work.'
 			},
 			{
 				slug: 'patch-browser',
@@ -421,29 +395,21 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '09B §4.6',
 				guidance:
-					'Searchable and keyboard-operable with Factory/User grouping. Browsing may audition temporarily, but Apply is the only project commit. Factory records cannot be overwritten or deleted; a modified Factory sound saves as a new User UUID.'
-			},
-			{
-				slug: 'recall-preview',
-				name: 'RecallPreview',
-				file: 'features/presets/SoundSetApplyDialog.svelte',
-				instrument: [],
-				mixer: ['Sound-set assignments / unchanged / discarded lists'],
-				transport: [],
-				source: '10B §4.6',
-				guidance:
-					'Renders the shared preview lists produced by 10A. Confirmed apply calls applySoundSetToProject, then replaceProject, then syncProject — never duplicate matching or compose replaceChannels/updateMaster. Apply does not move the main tab, bank selectors, or browser state.'
+					'Dialog body: a search field over a grouped, keyboard-navigable list. Needs a visible selected row, a Factory/User group treatment, and a clear indication that Factory entries cannot be overwritten or deleted. Browsing auditions; only Apply commits.'
 			},
 			{
 				slug: 'sound-set-panel',
 				name: 'SoundSetPanel',
-				file: 'features/presets/SoundSetPanel.svelte',
+				file: 'features/presets/SoundSetPanel.svelte · SoundSetApplyDialog.svelte',
 				instrument: [],
 				mixer: ['Sound set list, capture description, Save / Apply / Delete'],
 				transport: [],
 				source: '10B §4.6',
 				guidance:
-					'Lives only in the global Mixer. States exactly what it captures: channel names, roles, enabled flags, instruments, mix, and master. No MIDI, loop, tempo, export settings, sync, or workspace UI.'
+					'Lives only in the global Mixer. Its copy has to state exactly what a sound set captures — channel names, roles, enabled flags, instruments, mix, and master — and nothing else.',
+				variants: [
+					'Apply dialog shows three columns or stacked lists: assignments, unchanged, discarded. Same list treatment as the panel itself.'
+				]
 			}
 		]
 	},
@@ -460,136 +426,58 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '10B §4.4 · conventions §6',
 				guidance:
-					'Supplemental only and aria-hidden. Timer-free component rendering one flat bordered fill; the layout-installed lifecycle drives it. No gradient, canvas, segments, or peak animation. Reduced motion selects 5Hz. Target registration follows rendered strips and cleans up on view and project changes.'
+					'One flat bordered bar with a single fill. No gradient, canvas, segments, or peak animation. Supplemental and aria-hidden — the strip must be fully readable with the meter ignored, so this is the one element allowed to be purely decorative in the accessibility tree.'
 			},
 			{
 				slug: 'signal-status',
 				name: 'SignalStatus',
 				file: 'features/mixer/ChannelStrip.svelte',
 				instrument: [],
-				mixer: ['Audible / Muted / Silenced by solo / Not included'],
+				mixer: ['Audible / Muted / Silenced by solo / Not included', 'Latched CLIP + reset'],
 				transport: [],
 				source: '10B §4.3–4.4 · conventions §6',
 				guidance:
-					'Explicit text from the 10A audibility resolver. Channel state must be fully understandable with meters and color ignored.'
-			},
-			{
-				slug: 'clip-indicator',
-				name: 'ClipIndicator',
-				file: 'features/mixer/LevelMeter.svelte',
-				instrument: [],
-				mixer: ['Per-channel clip', 'Master clip'],
-				transport: [],
-				source: '10B §4.4',
-				guidance: 'Latched CLIP text plus a Reset action. Color alone never signals clipping.'
+					'The text line under the meter that carries the real state. Must be understandable in grayscale with meters ignored, and must fit four different phrases without changing the strip height.',
+				variants: [
+					'Clip is latched text plus a small reset action in the same line — never a colored square.'
+				]
 			},
 			{
 				slug: 'value-readout',
 				name: 'ValueReadout',
-				file: 'part of ParameterKnob / VerticalParameterFader',
-				instrument: ['Every numeric parameter'],
-				mixer: ['Every numeric parameter'],
-				transport: ['Tempo'],
-				source: 'conventions §5.2 · §6',
+				file: 'shared mono readout',
+				instrument: ['Parameter value + unit', 'Root note as C4 (60)'],
+				mixer: ['Pan as C / L50 / R30', 'Resolved loop ticks'],
+				transport: ['Position / duration + bars.beats', 'Effective BPM'],
+				source: '10B §4.1–4.2 · conventions §5.2 · §6',
 				guidance:
-					'Visible value and unit in the mono font. The marker and the accessible value text always reflect the real value, even when the slider position is mapped logarithmically.'
+					'Mono-font text showing a resolved value. Same element everywhere, only the format differs, so design one type treatment and one alignment rule. Values must not shift the layout as digits change — reserve the width.',
+				variants: [
+					'Inside pots and faders it sits under the control.',
+					'In the transport bar it is the largest instance and reads at a glance.'
+				]
 			},
 			{
-				slug: 'note-readout',
-				name: 'NoteReadout',
-				file: 'part of ParameterKnob (percussion root note)',
-				instrument: ['Percussion root note'],
-				mixer: [],
-				transport: [],
-				source: '09B §4.4 · conventions §5.2',
+				slug: 'field-text',
+				name: 'FieldText',
+				file: 'shared inline text',
+				instrument: ['Tracking help', 'Glyph and bank initial help', 'Numeric validation errors'],
+				mixer: ['Sound-set scope statement', 'Loop and numeric validation errors'],
+				transport: ['Space shortcut help', 'Tempo and seek validation errors'],
+				source: '09B §4.3–4.6 · 10B §4.1–4.2 · conventions §5.2 · §6',
 				guidance:
-					'Dedicated stepped pot showing note name and MIDI number as C4 (60) via formatMidiNote(). Never banked.'
-			},
-			{
-				slug: 'pan-readout',
-				name: 'PanReadout',
-				file: 'part of ChannelStrip pan pot',
-				instrument: [],
-				mixer: ['Channel pan'],
-				transport: [],
-				source: '10B §4.3',
-				guidance: 'C, L50, R30 formatting. Pan is a dedicated knob; do not create a G/P bank.'
-			},
-			{
-				slug: 'time-readout',
-				name: 'TimeReadout',
-				file: 'features/transport/PositionReadout.svelte',
-				instrument: [],
-				mixer: [],
-				transport: ['Position / duration plus bars and beats'],
-				source: '10B §4.1',
-				guidance:
-					'Renders formatSeconds and ticksToBarsBeats output from 10A. Components never re-derive time or tempo maps.'
-			},
-			{
-				slug: 'tempo-readout',
-				name: 'TempoReadout',
-				file: 'features/transport/TempoControls.svelte',
-				instrument: [],
-				mixer: [],
-				transport: ['Effective BPM beside the tempo pot'],
-				source: '10B §4.1',
-				guidance: 'Shows the effective BPM for the current multiplier. Tempo is never banked.'
-			},
-			{
-				slug: 'loop-readout',
-				name: 'LoopReadout',
-				file: 'features/transport/LoopControls.svelte',
-				instrument: [],
-				mixer: ['Resolved loop ticks under the loop fields'],
-				transport: [],
-				source: '10B §4.2',
-				guidance:
-					'Loop sits above the strips in the global Mixer. Loop and tempo are arrangement state and are excluded from sound sets.'
-			},
-			{
-				slug: 'edited-indicator',
-				name: 'EditedIndicator',
-				file: 'features/presets/InstrumentPresetHeader.svelte',
-				instrument: ['Modified marker beside the patch name'],
-				mixer: [],
-				transport: [],
-				source: '09B §4.6',
-				guidance:
-					'Text marker driven by the delivered modified-state comparison; not a colored dot.'
-			},
-			{
-				slug: 'error-text',
-				name: 'ErrorText',
-				file: 'part of every numeric and text field',
-				instrument: ['Numeric field validation'],
-				mixer: ['Loop field validation', 'Numeric field validation'],
-				transport: ['Tempo and seek validation'],
-				source: 'conventions §5.2 · §6',
-				guidance:
-					'Readable text linked by aria-describedby. Validation errors and sync state are always rendered as text, never as color or icon alone.'
-			},
-			{
-				slug: 'help-text',
-				name: 'HelpText',
-				file: 'shared inline help',
-				instrument: ['Tracking help', 'Glyph help', 'Bank initial help'],
-				mixer: ['Sound-set scope statement'],
-				transport: ['Space shortcut help'],
-				source: '09B §4.3–4.6 · 10B §4.1 · §4.6',
-				guidance:
-					'Every compact initial and glyph has hover and focus help with a full accessible name. Help is visible text, not a title attribute alone.'
+					'Small text attached to a control, linked by aria-describedby. Help and error are the same element with different emphasis — the error variant must be distinguishable in grayscale, not by color alone, and neither may resize its control when it appears.'
 			},
 			{
 				slug: 'engine-status',
 				name: 'EngineStatus',
 				file: 'features/transport/TransportControls.svelte',
-				instrument: ['Retry after audio failure; editing stays enabled'],
-				mixer: ['Mixer and project controls stay editable and saveable'],
-				transport: ['Suspended context text plus a visible Resume button'],
+				instrument: ['Retry after audio failure'],
+				mixer: [],
+				transport: ['Audio context state + Resume button'],
 				source: '09B §4.7 · 10B §4.1 · §4.7',
 				guidance:
-					'Never auto-resume — audio starts only from a user gesture. Audio denial or suspension must not block editing, saving, or future persistence.'
+					'A text status paired with a button, sitting at the end of the transport bar. Audio never auto-resumes, so this has to look actionable without looking alarming — editing and saving stay fully available while it is showing.'
 			},
 			{
 				slug: 'status-region',
@@ -599,7 +487,8 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				mixer: ['Errors and transient status'],
 				transport: ['Errors and transient status'],
 				source: 'conventions §6',
-				guidance: 'One aria-live="polite" region for the whole app. Reuse as delivered.'
+				guidance:
+					'One aria-live region for the whole app, already built. Listed because it sits under everything else and its height affects the workspace grid.'
 			},
 			{
 				slug: 'empty-state',
@@ -609,7 +498,8 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				mixer: ['No channels'],
 				transport: ['No song loaded'],
 				source: 'phase 04',
-				guidance: 'Reuse as delivered.'
+				guidance:
+					'Already built. Listed so the empty Mixer and empty Instrument views are designed rather than left as a bare sentence.'
 			}
 		]
 	}
