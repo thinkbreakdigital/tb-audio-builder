@@ -88,6 +88,44 @@ describe('projectState mutators', () => {
 		expect(() => projectState.updateMaster({ gain: 2 })).toThrow(/resulting project is invalid/);
 		expect(projectState.snapshot()).toEqual(before);
 	});
+
+	it('atomically replaces a complete project with one dirty/timestamp update', async () => {
+		const { projectState } = await loadProjectState();
+		vi.useFakeTimers();
+		try {
+			projectState.createNew('Song');
+			projectState.markSaved(Date.now());
+			const before = projectState.snapshot()!;
+			const replacement = structuredClone(before);
+			replacement.name = 'Sound set result';
+			vi.setSystemTime(before.updatedAtMs + 1000);
+
+			projectState.replaceProject(replacement);
+
+			expect(projectState.project).toMatchObject({
+				name: 'Sound set result',
+				updatedAtMs: before.updatedAtMs + 1000,
+				sync: { hasUnsyncedChanges: true }
+			});
+			replacement.name = 'Mutated caller object';
+			expect(projectState.project?.name).toBe('Sound set result');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('leaves state unchanged when an atomic replacement is invalid', async () => {
+		const { projectState } = await loadProjectState();
+		projectState.createNew('Song');
+		const before = projectState.snapshot();
+		const invalid = structuredClone(before!);
+		invalid.name = '   ';
+
+		expect(() => projectState.replaceProject(invalid)).toThrow(
+			/Unable to replace the active project: replacement is invalid/
+		);
+		expect(projectState.snapshot()).toEqual(before);
+	});
 });
 
 describe('projectState.markSaved', () => {

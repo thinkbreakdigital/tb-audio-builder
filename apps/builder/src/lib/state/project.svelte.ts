@@ -95,6 +95,17 @@ export const projectState = {
 		setValidatedProject(next, 'Unable to set project');
 	},
 
+	/**
+	 * Atomically installs a complete replacement produced by a pure feature operation (for example,
+	 * sound-set application). The incoming project is cloned, touched once, then validated before
+	 * the active state changes, so an invalid replacement cannot partially mutate the project.
+	 */
+	replaceProject(next: BuilderProject): void {
+		const candidate = structuredClone(next);
+		touch(candidate);
+		setValidatedProject(candidate, 'Unable to replace the active project: replacement is invalid');
+	},
+
 	createNew(name: string): void {
 		setValidatedProject(
 			createEmptyProject({ name: normalizeProjectName(name) }),
