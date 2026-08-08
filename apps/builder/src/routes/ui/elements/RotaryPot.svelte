@@ -8,17 +8,16 @@
 	 * background) with a rotated indicator line bound directly to the value — no canvas, gradient,
 	 * shadow, or SVG filter, and no transition on the rotation so a drag tracks the pointer instantly.
 	 *
-	 * No reset button and no permanent number field: a click (or Enter) on the dial is the only way
-	 * in, and the field swaps in for the value readout on demand — the label stays put and stays
-	 * bound to the range the whole time, so the range never loses its accessible name. Double-click
-	 * on the dial is the only reset path, and it's guarded against ever flashing the field open (see
-	 * createClickInteraction in pot-interaction.ts, shared with DualRotaryPot and LinearPot).
+	 * No reset button and no permanent number field. The dial itself has no click behavior at all —
+	 * pointer down on it only drags, and double-click resets to defaultValue. The value readout below
+	 * is a real <button>, and clicking (or Enter/Space-ing) that is the only way to reveal the number
+	 * field, which swaps in over the readout in place. The label stays put above the dial and bound
+	 * to the range the whole time, so the range never loses its accessible name.
 	 */
 	import {
 		angleFor,
 		clamp,
 		commitDraftFor,
-		createClickInteraction,
 		focusAndSelect,
 		formatValue,
 		handleRangeKeydown,
@@ -78,15 +77,16 @@
 		fieldOpen = true;
 	}
 
-	const clickInteraction = createClickInteraction(openField, () => commit(defaultValue));
-
 	function handleKeydown(event: KeyboardEvent) {
-		handleRangeKeydown(event, value, min, max, fineStep, commit, openField);
+		handleRangeKeydown(event, value, min, max, fineStep, commit);
 	}
 
 	function handlePointerDown(event: PointerEvent) {
-		clickInteraction.onPointerDown(event);
 		startDrag(event, value, min, max, step, fineStep, commit);
+	}
+
+	function handleDoubleClick() {
+		commit(defaultValue);
 	}
 
 	function runCommitDraft() {
@@ -138,7 +138,7 @@
 			oninput={handleRangeInput}
 			onkeydown={handleKeydown}
 			onpointerdown={handlePointerDown}
-			ondblclick={clickInteraction.onDoubleClick}
+			ondblclick={handleDoubleClick}
 			aria-valuetext={`${formatValue(value, decimals)} ${unit}`}
 			aria-describedby={error ? errorId : undefined}
 		/>
@@ -166,7 +166,15 @@
 				aria-describedby={error ? errorId : undefined}
 			/>
 		{:else}
-			<p class="value-text">{formatValue(value, decimals)} {unit}</p>
+			<button
+				type="button"
+				class="value-readout"
+				onclick={openField}
+				aria-label={`Edit ${label} value`}
+			>
+				{formatValue(value, decimals)}
+				{unit}
+			</button>
 		{/if}
 	</div>
 
@@ -181,7 +189,9 @@
 		flex-direction: column;
 		align-items: center;
 		gap: var(--space-1);
-		width: 84px;
+		/* min-width, not a fixed width: the label and value readout size to their own content, so a
+		   longer custom label or value grows the pot instead of visually overflowing it. */
+		min-width: 84px;
 		font-family: var(--font-sans);
 		font-size: var(--font-size-sm);
 		color: var(--color-text);
@@ -278,10 +288,37 @@
 		transform-origin: bottom center;
 	}
 
-	.value-text {
+	/* A readout that happens to be clickable, not a chunky button: no control-height box, no border —
+	   just the hover/focus affordance below plus the standard focus ring. */
+	.value-readout {
+		width: 100%;
+		height: 100%;
 		margin: 0;
+		padding: 0;
+		border: none;
+		background: none;
 		font-family: var(--font-mono);
+		font-size: var(--font-size-sm);
 		color: var(--color-text-muted);
+		white-space: nowrap;
+		cursor: pointer;
+		transition: color 100ms;
+	}
+
+	.value-readout:hover {
+		color: var(--color-text);
+		text-decoration: underline;
+	}
+
+	.value-readout:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.value-readout {
+			transition: none;
+		}
 	}
 
 	.error {

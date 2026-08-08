@@ -10,14 +10,14 @@
 	 * and — unlike the two rotary controls — lets the native range handle the drag itself rather than
 	 * computing it from pointer deltas, since `writing-mode: vertical-lr` already makes that correct.
 	 *
-	 * The label stays fixed above the fader and stays bound to the range at all times. A click (or
-	 * Enter) swaps the value readout below for a number field; double-click anywhere on the shaft
-	 * resets, guarded (via createClickInteraction) so it never flashes the field open first.
+	 * The label stays fixed above the fader and stays bound to the range at all times. The fader shaft
+	 * itself has no click behavior — pointer down on it only drags (native), and double-click resets
+	 * to defaultValue. The value readout below is a real <button>; clicking (or Enter/Space-ing) that
+	 * is the only way to reveal the number field, which swaps in over the readout in place.
 	 */
 	import {
 		clamp,
 		commitDraftFor,
-		createClickInteraction,
 		focusAndSelect,
 		formatValue,
 		handleRangeKeydown
@@ -72,12 +72,12 @@
 		fieldOpen = true;
 	}
 
-	// The native vertical range already drags itself correctly; onPointerDown only classifies the
-	// gesture so a plain click (no drag, no double-click) can reveal the field.
-	const clickInteraction = createClickInteraction(openField, () => commit(defaultValue));
-
 	function onRangeKeydown(event: KeyboardEvent) {
-		handleRangeKeydown(event, committed, min, max, fineStep, commit, openField);
+		handleRangeKeydown(event, committed, min, max, fineStep, commit);
+	}
+
+	function onDoubleClick() {
+		commit(defaultValue);
 	}
 
 	function runCommitDraft() {
@@ -135,8 +135,7 @@
 			value={committed}
 			oninput={onRangeInput}
 			onkeydown={onRangeKeydown}
-			onpointerdown={clickInteraction.onPointerDown}
-			ondblclick={clickInteraction.onDoubleClick}
+			ondblclick={onDoubleClick}
 			aria-describedby={error ? errorId : undefined}
 		/>
 	</div>
@@ -160,7 +159,14 @@
 				aria-describedby={error ? errorId : undefined}
 			/>
 		{:else}
-			<p class="value-text">{formatValue(committed, decimals)}</p>
+			<button
+				type="button"
+				class="value-readout"
+				onclick={openField}
+				aria-label={`Edit ${label} value`}
+			>
+				{formatValue(committed, decimals)}
+			</button>
 		{/if}
 	</div>
 
@@ -289,10 +295,37 @@
 		border-radius: var(--radius);
 	}
 
-	.value-text {
+	/* A readout that happens to be clickable, not a chunky button: no control-height box, no border —
+	   just the hover/focus affordance below plus the standard focus ring. */
+	.value-readout {
+		width: 100%;
+		height: 100%;
 		margin: 0;
+		padding: 0;
+		border: none;
+		background: none;
 		font-family: var(--font-mono);
+		font-size: var(--font-size-sm);
+		color: var(--color-text-muted);
+		white-space: nowrap;
+		cursor: pointer;
+		transition: color 100ms;
+	}
+
+	.value-readout:hover {
 		color: var(--color-text);
+		text-decoration: underline;
+	}
+
+	.value-readout:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.value-readout {
+			transition: none;
+		}
 	}
 
 	.error {

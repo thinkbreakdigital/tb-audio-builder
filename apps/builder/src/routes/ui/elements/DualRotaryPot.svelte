@@ -7,18 +7,17 @@
 	 * mapping, drag, keyboard, click-to-reveal, and reset behavior are RotaryPot's, imported from
 	 * pot-interaction.ts and called once per ring so both share the exact same feel.
 	 *
-	 * No reset buttons: double-click on a ring or the disc — the whole control body, not just its
-	 * indicator — is the only reset path, guarded (via createClickInteraction) so it never flashes a
-	 * field open on the way there. The paired heading's names stay fixed and stay bound to their
-	 * ranges at all times; each parameter's own half of the value line below swaps for its own number
-	 * field on click/Enter, independently of the other, so both values stay readable while one is
-	 * being edited — the name-swap approach an earlier pass used ate the wrong real estate.
+	 * No reset buttons: neither ring nor the disc has any click behavior of its own — pointer down
+	 * only drags, and double-click on the control body resets to defaultValue. The paired heading's
+	 * names stay fixed and stay bound to their ranges at all times. Each half of the value line below
+	 * is its own real <button>; clicking (or Enter/Space-ing) one swaps that half for its own number
+	 * field, independently of the other, so both values stay readable while one is being edited —
+	 * the name-swap approach an earlier pass used ate the wrong real estate.
 	 */
 	import {
 		angleFor,
 		clamp,
 		commitDraftFor,
-		createClickInteraction,
 		focusAndSelect,
 		formatValue,
 		handleRangeKeydown,
@@ -28,6 +27,8 @@
 
 	export interface Props {
 		outerLabel?: string;
+		/** Visible heading text only (e.g. "Cut"). Falls back to outerLabel if not supplied. */
+		outerShortLabel?: string;
 		outerValue?: number;
 		outerMin?: number;
 		outerMax?: number;
@@ -38,6 +39,8 @@
 		outerDefaultValue?: number;
 		outerScale?: Scale;
 		innerLabel?: string;
+		/** Visible heading text only (e.g. "Res"). Falls back to innerLabel if not supplied. */
+		innerShortLabel?: string;
 		innerValue?: number;
 		innerMin?: number;
 		innerMax?: number;
@@ -51,6 +54,7 @@
 
 	let {
 		outerLabel = 'Cutoff',
+		outerShortLabel = 'Cut',
 		outerValue = $bindable(1000),
 		outerMin = 20,
 		outerMax = 20000,
@@ -61,6 +65,7 @@
 		outerDefaultValue = 1000,
 		outerScale = 'log',
 		innerLabel = 'Resonance',
+		innerShortLabel = 'Res',
 		innerValue = $bindable(0.7),
 		innerMin = 0.1,
 		innerMax = 20,
@@ -71,6 +76,11 @@
 		innerDefaultValue = 0.7,
 		innerScale = 'linear'
 	}: Props = $props();
+
+	// Guards the case where a caller overrides the full label but passes an empty short label:
+	// falls back to the full name rather than showing a blank heading.
+	const outerHeadingText = $derived((outerShortLabel || outerLabel).toUpperCase());
+	const innerHeadingText = $derived((innerShortLabel || innerLabel).toUpperCase());
 
 	const uid = $props.id();
 	const outerRangeId = `${uid}-outer-range`;
@@ -124,41 +134,28 @@
 		innerFieldOpen = true;
 	}
 
-	const outerClick = createClickInteraction(openOuterField, () => commitOuter(outerDefaultValue));
-	const innerClick = createClickInteraction(openInnerField, () => commitInner(innerDefaultValue));
-
 	function handleOuterKeydown(event: KeyboardEvent) {
-		handleRangeKeydown(
-			event,
-			outerValue,
-			outerMin,
-			outerMax,
-			outerFineStep,
-			commitOuter,
-			openOuterField
-		);
+		handleRangeKeydown(event, outerValue, outerMin, outerMax, outerFineStep, commitOuter);
 	}
 
 	function handleInnerKeydown(event: KeyboardEvent) {
-		handleRangeKeydown(
-			event,
-			innerValue,
-			innerMin,
-			innerMax,
-			innerFineStep,
-			commitInner,
-			openInnerField
-		);
+		handleRangeKeydown(event, innerValue, innerMin, innerMax, innerFineStep, commitInner);
 	}
 
 	function handleOuterPointerDown(event: PointerEvent) {
-		outerClick.onPointerDown(event);
 		startDrag(event, outerValue, outerMin, outerMax, outerStep, outerFineStep, commitOuter);
 	}
 
 	function handleInnerPointerDown(event: PointerEvent) {
-		innerClick.onPointerDown(event);
 		startDrag(event, innerValue, innerMin, innerMax, innerStep, innerFineStep, commitInner);
+	}
+
+	function handleOuterDoubleClick() {
+		commitOuter(outerDefaultValue);
+	}
+
+	function handleInnerDoubleClick() {
+		commitInner(innerDefaultValue);
 	}
 
 	function runCommitOuterDraft() {
@@ -230,7 +227,11 @@
 
 <div class="pot">
 	<p class="pair-heading">
-		<label for={outerRangeId} class="name-label">{outerLabel.toUpperCase()}</label>
+		<!-- Visible text is the compact initial; aria-label carries the full name as the range's
+		     accessible name (09B §4.3), and title gives sighted mouse users the same on hover. -->
+		<label for={outerRangeId} class="name-label" aria-label={outerLabel} title={outerLabel}>
+			{outerHeadingText}
+		</label>
 
 		<!--
 			One glyph, not two. The semicircle is the outer ring and the dot is the inner disc; each
@@ -253,7 +254,9 @@
 			<path d="M13.6 6 H25.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
 		</svg>
 
-		<label for={innerRangeId} class="name-label">{innerLabel.toUpperCase()}</label>
+		<label for={innerRangeId} class="name-label" aria-label={innerLabel} title={innerLabel}>
+			{innerHeadingText}
+		</label>
 	</p>
 
 	<div class="dial" style={`--outer-d: ${OUTER_DIAMETER}px; --inner-d: ${INNER_DIAMETER}px;`}>
@@ -268,7 +271,7 @@
 			oninput={(event) => commitOuter(Number((event.currentTarget as HTMLInputElement).value))}
 			onkeydown={handleOuterKeydown}
 			onpointerdown={handleOuterPointerDown}
-			ondblclick={outerClick.onDoubleClick}
+			ondblclick={handleOuterDoubleClick}
 			aria-valuetext={readout(outerValue, outerUnit, outerDecimals)}
 			aria-describedby={outerError ? outerErrorId : undefined}
 		/>
@@ -284,7 +287,7 @@
 			oninput={(event) => commitInner(Number((event.currentTarget as HTMLInputElement).value))}
 			onkeydown={handleInnerKeydown}
 			onpointerdown={handleInnerPointerDown}
-			ondblclick={innerClick.onDoubleClick}
+			ondblclick={handleInnerDoubleClick}
 			aria-valuetext={readout(innerValue, innerUnit, innerDecimals)}
 			aria-describedby={innerError ? innerErrorId : undefined}
 		/>
@@ -325,7 +328,14 @@
 					aria-describedby={outerError ? outerErrorId : undefined}
 				/>
 			{:else}
-				<span class="value-text">{readout(outerValue, outerUnit, outerDecimals)}</span>
+				<button
+					type="button"
+					class="value-readout"
+					onclick={openOuterField}
+					aria-label={`Edit ${outerLabel} value`}
+				>
+					{readout(outerValue, outerUnit, outerDecimals)}
+				</button>
 			{/if}
 		</span>
 		<span class="value-sep">/</span>
@@ -348,7 +358,14 @@
 					aria-describedby={innerError ? innerErrorId : undefined}
 				/>
 			{:else}
-				<span class="value-text">{readout(innerValue, innerUnit, innerDecimals)}</span>
+				<button
+					type="button"
+					class="value-readout"
+					onclick={openInnerField}
+					aria-label={`Edit ${innerLabel} value`}
+				>
+					{readout(innerValue, innerUnit, innerDecimals)}
+				</button>
 			{/if}
 		</span>
 	</p>
@@ -367,7 +384,10 @@
 		flex-direction: column;
 		align-items: center;
 		gap: var(--space-1);
-		width: 112px;
+		/* min-width, not a fixed width: the heading and value line size to their own content, so if
+		   either is ever wider than 112px it grows the pot instead of visually overflowing it — the
+		   bug the CUT/RES shortening above was fixing. Comfortably inside the ~140px catalog column. */
+		min-width: 112px;
 		font-family: var(--font-sans);
 		font-size: var(--font-size-sm);
 		color: var(--color-text);
@@ -389,6 +409,7 @@
 
 	.name-label {
 		flex: none;
+		white-space: nowrap;
 	}
 
 	.visually-hidden {
@@ -530,8 +551,37 @@
 		height: var(--control-height);
 	}
 
-	.value-text {
+	/* A readout that happens to be clickable, not a chunky button: no control-height box, no border —
+	   just the hover/focus affordance below plus the standard focus ring. */
+	.value-readout {
+		width: 100%;
+		height: 100%;
+		margin: 0;
+		padding: 0;
+		border: none;
+		background: none;
+		font-family: var(--font-mono);
+		font-size: var(--font-size-sm);
+		color: var(--color-text-muted);
 		white-space: nowrap;
+		cursor: pointer;
+		transition: color 100ms;
+	}
+
+	.value-readout:hover {
+		color: var(--color-text);
+		text-decoration: underline;
+	}
+
+	.value-readout:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.value-readout {
+			transition: none;
+		}
 	}
 
 	.error {
