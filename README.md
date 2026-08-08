@@ -48,6 +48,9 @@ The application is served from `apps/builder`. Shared, framework-neutral code be
 [`docs/architecture.md`](docs/architecture.md) for the package and persistence boundaries.
 See [`docs/midi-support.md`](docs/midi-support.md) for supported MIDI events, warnings, and role
 suggestions.
+See [`docs/phase-09-handoff.md`](docs/phase-09-handoff.md) for the completed non-rendering
+instrument foundation, the intentionally paused UI/UX milestone, and the single-global-Mixer
+ownership contract.
 
 ## Checks
 

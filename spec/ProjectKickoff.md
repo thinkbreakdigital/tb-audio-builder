@@ -182,13 +182,11 @@ A user MUST be able to replace the MIDI data assigned to an existing channel wit
 
 ### 5.1 Compact musician-facing workspace contract
 
-The workspace MUST be organized around two top-level views: **Channel Editor** and **Mixer
-Overview**. Channel Editor follows the selected channel and has two nested tabs: **Instrument** and
-**Mixer**. The channel header owns channel name, role, `Include in playback`, and reset. The
-Instrument tab owns synthesis, instrument presets, and press-and-hold preview. The focused Mixer
-tab owns that channel's gain, pan, mute, solo, meter, and audibility text. Mixer Overview remains
-the all-channel balancing surface and owns loop controls, sound sets, normalization, and the master
-section. Focused and overview mixer controls edit the same project fields through shared logic.
+The workspace MUST keep the existing two top-level views: **Instrument** and **Mixer**. Instrument
+follows the selected channel and owns the channel header, synthesis controls, instrument presets,
+and press-and-hold preview. Mixer is the one global all-channel balancing surface and owns channel
+gain, pan, mute, solo, meters and audibility, plus loop controls, sound sets, normalization, and the
+master section. There is no focused or per-channel Mixer tab and no duplicated channel-mix surface.
 
 Continuous parameters SHOULD use a compact rotary control with native slider semantics and an
 editable numeric value beneath it. Every rotary control MUST remain operable by keyboard and MUST
@@ -201,7 +199,7 @@ through a labelled segmented selector when this reduces panel size without mixin
 * Filters, channel gain/pan, layer gains, root note, master gain, and compressor parameters remain
   dedicated controls.
 
-The selected bank member and both tab levels are temporary UI state. Changing them MUST NOT change
+The selected bank member and top-level view are temporary UI state. Changing them MUST NOT change
 audio, dirty the project, autosave, synchronize, or appear in portable/code exports. Preset headers
 use familiar previous/next arrows plus explicit Browse and Save As actions; icons always have
 visible text or unambiguous accessible names and help text. Factory presets cannot be overwritten.
