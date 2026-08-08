@@ -41,6 +41,12 @@ export async function readMidiFile(file: File): Promise<{
 	} catch (cause) {
 		throw new MidiImportError(filename, 'could not be read.', cause);
 	}
+	if (fileBytes.byteLength > MAX_MIDI_FILE_BYTES) {
+		throw new MidiImportError(
+			filename,
+			`contains ${formatMegabytes(fileBytes.byteLength)} after reading; the maximum supported size is ${formatMegabytes(MAX_MIDI_FILE_BYTES)}.`
+		);
+	}
 
 	if (typeof crypto === 'undefined' || crypto.subtle === undefined) {
 		throw new MidiImportError(

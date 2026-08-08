@@ -1,5 +1,4 @@
 import { ProjectValidationError } from '@thinkbreak/project-schema';
-import { loadMidiParser } from '$lib/client/midi/load-parser.js';
 import { statusState } from '$lib/state/status.svelte.js';
 import { importMidiIntoProject } from './import-midi.js';
 import { importWarningsState } from './import-warnings.svelte.js';
@@ -10,14 +9,21 @@ import { importWarningsState } from './import-warnings.svelte.js';
  * success and warning-count status messages; this wrapper only reports failures and records the
  * warnings for `ImportWarningList`.
  */
+function isMidiImportError(error: unknown): error is Error & { filename: string } {
+	return (
+		error instanceof Error &&
+		error.name === 'MidiImportError' &&
+		typeof (error as { filename?: unknown }).filename === 'string'
+	);
+}
+
 export async function runMidiImport(file: File): Promise<boolean> {
 	try {
 		const outcome = await importMidiIntoProject(file);
 		importWarningsState.set(outcome.warnings, file.name);
 		return true;
 	} catch (error) {
-		const { MidiImportError } = await loadMidiParser();
-		if (error instanceof MidiImportError || error instanceof ProjectValidationError) {
+		if (isMidiImportError(error) || error instanceof ProjectValidationError) {
 			statusState.push('error', error.message);
 		} else {
 			const message = error instanceof Error ? error.message : String(error);

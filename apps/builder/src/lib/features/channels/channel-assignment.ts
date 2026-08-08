@@ -9,6 +9,13 @@ import {
 import { createChannelForTrack, pairByNameThenPosition } from '@thinkbreak/project-schema';
 import type { TrackRoleSuggestion } from '@thinkbreak/midi-parser';
 
+const CHANNEL_NAME_MAX_LENGTH = 120;
+
+export function normalizeImportedChannelName(name: string, fallback: string): string {
+	const normalized = name.trim().slice(0, CHANNEL_NAME_MAX_LENGTH);
+	return normalized || fallback;
+}
+
 function createInstrumentForRole(role: ChannelRole): InstrumentDefinition | null {
 	switch (role) {
 		case 'pitched':
@@ -60,7 +67,7 @@ export function reconcileChannels(input: {
 	droppedChannelCount: number;
 } {
 	const tracks = input.song.tracks.map((track, trackIndex) => ({
-		name: track.sourceTrackName.trim() || `Track ${trackIndex + 1}`,
+		name: normalizeImportedChannelName(track.sourceTrackName, `Track ${trackIndex + 1}`),
 		track
 	}));
 	const pairing = pairByNameThenPosition(input.existingChannels, tracks);
@@ -72,7 +79,7 @@ export function reconcileChannels(input: {
 	for (const pair of pairing.pairs) {
 		channelsByTrackId.set(pair.right.track.id, {
 			id: pair.left.id,
-			name: pair.left.name,
+			name: normalizeImportedChannelName(pair.left.name, pair.right.name),
 			role: pair.left.role,
 			sourceTrackId: pair.right.track.id,
 			enabled: pair.left.enabled,

@@ -13,7 +13,7 @@ function makeChannel(overrides: Partial<AudioChannelDefinition> = {}): AudioChan
 	return {
 		id: crypto.randomUUID(),
 		name: 'Test channel',
-		role: 'pitched',
+		role: 'ignored',
 		sourceTrackId: null,
 		enabled: true,
 		instrument: null,
@@ -78,6 +78,15 @@ describe('projectState mutators', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it('leaves the project and updatedAtMs unchanged when a mutation is invalid', async () => {
+		const { projectState } = await loadProjectState();
+		projectState.createNew('Song');
+		const before = projectState.snapshot();
+
+		expect(() => projectState.updateMaster({ gain: 2 })).toThrow(/resulting project is invalid/);
+		expect(projectState.snapshot()).toEqual(before);
 	});
 });
 
@@ -152,5 +161,30 @@ describe('projectState.replaceChannels', () => {
 
 		expect(() => projectState.replaceChannels([channel])).not.toThrow();
 		expect(projectState.channels).toEqual([channel]);
+	});
+});
+
+describe('projectState validation boundaries', () => {
+	it('rejects an invalid project without replacing the current project', async () => {
+		const { projectState } = await loadProjectState();
+		projectState.createNew('Song');
+		const before = projectState.snapshot();
+		const invalid = structuredClone(before!);
+		invalid.name = '   ';
+
+		expect(() => projectState.setProject(invalid)).toThrow(/Unable to set project/);
+		expect(projectState.snapshot()).toEqual(before);
+	});
+
+	it('trims names and rejects blank or overlong rename attempts without mutation', async () => {
+		const { projectState } = await loadProjectState();
+		projectState.createNew('Song');
+		projectState.rename('  Trimmed song  ');
+		expect(projectState.project?.name).toBe('Trimmed song');
+		const before = projectState.snapshot();
+
+		expect(() => projectState.rename('  ')).toThrow(/cannot be blank/);
+		expect(() => projectState.rename('a'.repeat(121))).toThrow(/120 characters/);
+		expect(projectState.snapshot()).toEqual(before);
 	});
 });

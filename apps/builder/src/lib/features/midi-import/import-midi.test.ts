@@ -142,6 +142,143 @@ describe('importMidiIntoProject', () => {
 		expect(modules.projectModule.projectState.project?.name).toBe('My Song');
 	});
 
+	it('normalizes filename-derived project and new channel names to nonblank 120-character values', async () => {
+		const modules = await loadImportModules();
+		const readMock = vi.mocked(modules.readModule.readMidiFile);
+		const compileMock = vi.mocked(modules.parserModule.compileMidiFile);
+		const longName = `  ${'A'.repeat(140)}  `;
+		const song = makeSong();
+		song.tracks[0]!.sourceTrackName = longName;
+		readMock.mockResolvedValue(readResult(`  ${'B'.repeat(140)}.mid  `));
+		compileMock.mockReturnValue({ song, warnings: [], suggestions: [] });
+
+		await modules.importModule.importMidiIntoProject(new File([], 'long.mid'));
+
+		expect(modules.projectModule.projectState.project?.name).toBe('B'.repeat(120));
+		expect(modules.projectModule.projectState.project?.channels[0]?.name).toBe('A'.repeat(120));
+	});
+
+	it('replaces the active MIDI blob without leaving the old blob behind', async () => {
+		const modules = await loadImportModules();
+		const readMock = vi.mocked(modules.readModule.readMidiFile);
+		const compileMock = vi.mocked(modules.parserModule.compileMidiFile);
+		const oldSha256 = 'c'.repeat(64);
+		const newSha256 = 'd'.repeat(64);
+		const files = new Map<string, { filename: string; fileBytes: ArrayBuffer }>();
+		const store = {
+			put(sha256: string, filename: string, fileBytes: ArrayBuffer) {
+				files.set(sha256, { filename, fileBytes });
+			},
+			get(sha256: string) {
+				return files.get(sha256) ?? null;
+			},
+			has(sha256: string) {
+				return files.has(sha256);
+			},
+			delete(sha256: string) {
+				files.delete(sha256);
+			},
+			clear() {
+				files.clear();
+			}
+		};
+		modules.projectModule.projectState.createNew('Existing');
+		const existingProject = modules.projectModule.projectState.snapshot()!;
+		existingProject.sourceMidi = {
+			filename: 'old.mid',
+			byteLength: 4,
+			sha256: oldSha256
+		};
+		modules.projectModule.projectState.setProject(existingProject);
+		store.put(oldSha256, 'old.mid', new ArrayBuffer(4));
+
+		readMock.mockResolvedValue(readResult('new.mid', newSha256));
+		compileMock.mockReturnValue({ song: makeSong(), warnings: [], suggestions: [] });
+		await modules.importModule.importMidiIntoProject(new File([], 'new.mid'), {
+			midiFileStore: store
+		});
+
+		expect(modules.projectModule.projectState.project?.sourceMidi?.sha256).toBe(newSha256);
+		expect(store.get(oldSha256)).toBeNull();
+		expect(store.get(newSha256)).not.toBeNull();
+	});
+
+	it('rolls back newly stored bytes when assigning the imported project fails', async () => {
+		const modules = await loadImportModules();
+		const readMock = vi.mocked(modules.readModule.readMidiFile);
+		const compileMock = vi.mocked(modules.parserModule.compileMidiFile);
+		const sha256 = 'e'.repeat(64);
+		readMock.mockResolvedValue(readResult('song.mid', sha256));
+		compileMock.mockReturnValue({ song: makeSong(), warnings: [], suggestions: [] });
+		const store = {
+			put: vi.fn(),
+			get: vi.fn(() => null),
+			has: vi.fn(() => false),
+			delete: vi.fn(),
+			clear: vi.fn()
+		};
+
+		await expect(
+			modules.importModule.importMidiIntoProject(new File([], 'song.mid'), {
+				midiFileStore: store,
+				setProject: () => {
+					throw new Error('state assignment failed');
+				}
+			})
+		).rejects.toThrow(/state assignment failed/);
+		expect(store.put).toHaveBeenCalledOnce();
+		expect(store.delete).toHaveBeenCalledWith(sha256);
+		expect(modules.projectModule.projectState.project).toBeNull();
+	});
+
+	it('restores a same-hash record when assignment fails after overwriting it', async () => {
+		const modules = await loadImportModules();
+		const readMock = vi.mocked(modules.readModule.readMidiFile);
+		const compileMock = vi.mocked(modules.parserModule.compileMidiFile);
+		const sha256 = 'f'.repeat(64);
+		readMock.mockResolvedValue(readResult('replacement.mid', sha256));
+		compileMock.mockReturnValue({ song: makeSong(), warnings: [], suggestions: [] });
+		modules.storeModule.midiFileStore.put(sha256, 'original.mid', new Uint8Array([9]).buffer);
+
+		await expect(
+			modules.importModule.importMidiIntoProject(new File([], 'replacement.mid'), {
+				setProject: () => {
+					throw new Error('state assignment failed');
+				}
+			})
+		).rejects.toThrow(/state assignment failed/);
+		const restored = modules.storeModule.midiFileStore.get(sha256);
+		expect(restored?.filename).toBe('original.mid');
+		expect(restored && Array.from(new Uint8Array(restored.fileBytes))).toEqual([9]);
+	});
+
+	it('does not change project ownership when storing the new blob fails', async () => {
+		const modules = await loadImportModules();
+		const readMock = vi.mocked(modules.readModule.readMidiFile);
+		const compileMock = vi.mocked(modules.parserModule.compileMidiFile);
+		readMock.mockResolvedValue(readResult('song.mid', '9'.repeat(64)));
+		compileMock.mockReturnValue({ song: makeSong(), warnings: [], suggestions: [] });
+		modules.projectModule.projectState.createNew('Existing');
+		const before = modules.projectModule.projectState.snapshot();
+		const store = {
+			put: vi.fn(() => {
+				throw new Error('store failed');
+			}),
+			get: vi.fn(() => null),
+			has: vi.fn(() => false),
+			delete: vi.fn(),
+			clear: vi.fn()
+		};
+
+		await expect(
+			modules.importModule.importMidiIntoProject(new File([], 'song.mid'), {
+				midiFileStore: store
+			})
+		).rejects.toThrow(/store failed/);
+		expect(modules.projectModule.projectState.snapshot()).toEqual(before);
+		expect(store.delete).not.toHaveBeenCalled();
+	});
+
 	it('returns compiler warnings and pushes exactly one warning status', async () => {
 		const modules = await loadImportModules();
 		const readMock = vi.mocked(modules.readModule.readMidiFile);

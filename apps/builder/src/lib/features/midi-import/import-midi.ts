@@ -7,7 +7,7 @@ import { DEFAULT_AUDIO_LIMITS } from '@thinkbreak/audio-runtime';
 import { BuilderProjectSchema, createEmptyProject, parseSafe } from '@thinkbreak/project-schema';
 import type { MidiImportWarning } from '@thinkbreak/midi-parser';
 import { loadMidiParser } from '$lib/client/midi/load-parser.js';
-import { midiFileStore } from '$lib/client/midi/midi-file-store.js';
+import { midiFileStore, type MidiFileStore } from '$lib/client/midi/midi-file-store.js';
 import { readMidiFile } from '$lib/client/midi/read-midi-file.js';
 import { projectState } from '$lib/state/project.svelte.js';
 import { statusState } from '$lib/state/status.svelte.js';
@@ -23,15 +23,26 @@ export interface ImportOutcome {
 	droppedChannelCount: number;
 }
 
-function projectNameFromFilename(filename: string): string {
-	return filename.replace(/\.(?:mid|midi)$/i, '') || filename;
+const PROJECT_NAME_MAX_LENGTH = 120;
+const IMPORTED_PROJECT_FALLBACK_NAME = 'Untitled project';
+
+export interface MidiImportDependencies {
+	midiFileStore?: MidiFileStore;
+	setProject?: (project: BuilderProject) => void;
 }
 
-function cloneProject(project: BuilderProject): BuilderProject {
-	return structuredClone(project);
+export function projectNameFromFilename(filename: string): string {
+	const stem = filename
+		.trim()
+		.replace(/\.(?:mid|midi)$/i, '')
+		.trim();
+	return (stem || IMPORTED_PROJECT_FALLBACK_NAME).slice(0, PROJECT_NAME_MAX_LENGTH);
 }
 
-export async function importMidiIntoProject(file: File): Promise<ImportOutcome> {
+export async function importMidiIntoProject(
+	file: File,
+	dependencies: MidiImportDependencies = {}
+): Promise<ImportOutcome> {
 	const { compileMidiFile, MidiImportError } = await loadMidiParser();
 	const read = await readMidiFile(file);
 	const compiled = compileMidiFile({ fileBytes: read.fileBytes, filename: read.filename });
@@ -44,11 +55,12 @@ export async function importMidiIntoProject(file: File): Promise<ImportOutcome> 
 		);
 	}
 
-	const existingProject = projectState.project;
-	const existingChannels = projectState.channels;
+	const existingProject = projectState.snapshot();
+	const existingChannels = existingProject?.channels ?? [];
+	const previousMidiSha256 = existingProject?.sourceMidi?.sha256 ?? null;
 	const reconciliation = reconcileChannels({ song, existingChannels, suggestions });
 	const candidate = existingProject
-		? cloneProject(existingProject)
+		? existingProject
 		: createEmptyProject({ name: projectNameFromFilename(read.filename) });
 
 	candidate.song = song;
@@ -73,8 +85,22 @@ export async function importMidiIntoProject(file: File): Promise<ImportOutcome> 
 	);
 	if (!validated.ok) throw validated.error;
 
-	midiFileStore.put(read.sha256, read.filename, read.fileBytes);
-	projectState.setProject(validated.value);
+	const store = dependencies.midiFileStore ?? midiFileStore;
+	const previouslyStoredBlob = store.get(read.sha256);
+	store.put(read.sha256, read.filename, read.fileBytes);
+	try {
+		(dependencies.setProject ?? projectState.setProject)(validated.value);
+	} catch (error) {
+		if (previouslyStoredBlob === null) {
+			store.delete(read.sha256);
+		} else {
+			store.put(read.sha256, previouslyStoredBlob.filename, previouslyStoredBlob.fileBytes);
+		}
+		throw error;
+	}
+	if (previousMidiSha256 !== null && previousMidiSha256 !== read.sha256) {
+		store.delete(previousMidiSha256);
+	}
 
 	const detail =
 		reconciliation.droppedChannelCount > 0

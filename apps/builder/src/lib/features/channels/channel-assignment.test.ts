@@ -161,6 +161,21 @@ describe('reconcileChannels', () => {
 		expect(result.channels[4]?.instrument).toBeNull();
 	});
 
+	it('bounds a preserved legacy channel name during re-import', () => {
+		const song = makeSong(['Lead']);
+		const existing = makeChannel('lead', 'L'.repeat(140), 'pitched', {
+			instrument: createDefaultPitchedInstrument()
+		});
+
+		const result = reconcileChannels({
+			song,
+			existingChannels: [existing],
+			suggestions: suggestions(song, ['pitched'])
+		});
+
+		expect(result.channels[0]?.name).toBe('L'.repeat(120));
+	});
+
 	it('keeps a user-set role when a new suggestion disagrees', () => {
 		const song = makeSong(['Bass']);
 		const result = reconcileChannels({

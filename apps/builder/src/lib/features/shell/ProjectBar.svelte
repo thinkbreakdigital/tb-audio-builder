@@ -3,12 +3,11 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import TextField from '$lib/components/TextField.svelte';
 	import { runMidiImport } from '$lib/features/midi-import/run-import.js';
+	import { createNewProject } from '$lib/features/shell/project-actions.js';
 	import { projectState } from '$lib/state/project.svelte.js';
 	import { statusState } from '$lib/state/status.svelte.js';
 	import { syncState } from '$lib/state/sync.svelte.js';
-	import { uiState } from '$lib/state/ui.svelte.js';
 
-	const NEW_PROJECT_NAME = 'Untitled project';
 	const PROJECT_NAME_MAX_LENGTH = 120;
 
 	let fileInputEl: HTMLInputElement | undefined = $state();
@@ -20,13 +19,27 @@
 
 	function handleRename(event: Event) {
 		const input = event.target as HTMLInputElement;
-		projectState.rename(input.value);
+		try {
+			projectState.rename(input.value);
+		} catch (error) {
+			input.value = projectState.project?.name ?? '';
+			statusState.push(
+				'error',
+				error instanceof Error ? error.message : 'Unable to rename the project.'
+			);
+		}
 	}
 
 	function handleNewProject() {
-		projectState.createNew(NEW_PROJECT_NAME);
-		uiState.setSelectedChannelId(null);
-		statusState.push('info', `Created project "${NEW_PROJECT_NAME}".`);
+		try {
+			createNewProject();
+		} catch (error) {
+			statusState.push(
+				'error',
+				error instanceof Error ? error.message : 'Unable to create a new project.'
+			);
+			return;
+		}
 	}
 
 	function handleImportClick() {
