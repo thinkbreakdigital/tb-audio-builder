@@ -1,5 +1,9 @@
 # Agent instructions
 
+## Github
+
+I am a solo developer. Main branch deploys to an online instance with no traffic. Always use the main branch and do not create new branches unless specified otherwise.
+
 ## Verification
 
 ```sh
