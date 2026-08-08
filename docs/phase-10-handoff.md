@@ -15,7 +15,7 @@ user explicitly approves the UI direction.
 The workspace has one top-level `Instrument | Mixer` switch.
 
 - Instrument follows the selected channel and is rendered by 09B.
-- Mixer is one global all-channel surface rendered by 10B. It owns every channel Gain/Pan/Mute/
+- Mixer is one global all-channel surface rendered by 10B. It owns every channel Volume/Pan/Mute/
   Solo/meter plus loop, sound sets, normalization, and Master.
 
 There is no focused/per-channel Mixer, nested `channelTab`, or duplicate channel-mix UI.
@@ -105,9 +105,10 @@ only and enable-only changes already use one call, and invalid input performs no
 10B will render, after joint approval:
 
 - transport controls, readouts, horizontal seek, loop fields, Tempo, and Resume audio;
-- horizontally scrollable compact channel strips with vertical Gain fader, Pan knob, text MUTE/
+- horizontally scrollable compact channel strips with vertical Volume fader, Pan knob, text MUTE/
   SOLO, supplemental meter, and audibility text;
-- a clearly separated Master with dedicated Gain/compressor controls and CLIP reset;
+- a clearly separated Master with a dedicated Volume fader, concentric `DualParameterKnob`
+  compressor Threshold+Ratio and Attack+Release, a dedicated Knee knob, and CLIP reset;
 - explicit Normalize confirmation and SoundSetPanel/Apply preview;
 - shell lifecycle installation, target registration, keyboard shortcut filtering, accessibility,
   reduced motion, 1024×640, and 200% zoom behavior.
@@ -121,7 +122,8 @@ matching, state transactions, poller timers, or audio lifecycle logic.
 2. Install the 10A visibility/poller lifecycle once and tear it down once.
 3. Register only rendered channel meter IDs; components own no timer.
 4. Bind transport/channel/master controls to 10A actions, keeping scrubbing/numeric drafts local.
-5. Keep Gain as a vertical fader and Pan as a dedicated knob; do not create a G/P bank.
+5. Keep Volume as a vertical fader and Pan as a dedicated knob; do not create a Volume/Pan bank or
+   pair.
 6. Render audibility text independently of decorative meters.
 7. Use 10A normalization and sound-set actions after explicit confirmation; Cancel performs zero
    work.

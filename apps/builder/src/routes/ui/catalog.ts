@@ -41,39 +41,28 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				instrument: [
 					'Octave / Semitone / Fine tune (banked O/S/F)',
 					'Amplitude A/D/S/R (banked)',
-					'Vibrato Rate / Depth (banked)',
-					'Filter cutoff',
-					'Filter resonance',
 					'Pitch bend range',
 					'Max voices',
 					'Percussion root note',
 					'Oscillator layer volume',
-					'Oscillator start / end frequency (banked)',
 					'Pitch decay',
 					'Oscillator layer A/D/S/R (banked)',
-					'Noise layer cutoff',
-					'Noise layer resonance',
 					'Noise layer volume',
 					'Noise layer A/D/S/R (banked)'
 				],
-				mixer: [
-					'Channel pan',
-					'Master compressor threshold',
-					'Master compressor knee',
-					'Master compressor ratio',
-					'Master compressor attack',
-					'Master compressor release'
-				],
+				mixer: ['Channel pan', 'Master compressor knee'],
 				transport: ['Tempo multiplier'],
 				source: '09B §4.2 · 10B §4.4–4.5 · conventions §5.2',
 				guidance:
-					'One rotary implementation only; a second is a defect. Visually rotary over a native <input type="range"> so the accessibility tree keeps slider semantics. The whole unit is one design: label above, dial, editable number field beneath it, value + unit text, labelled reset. No canvas, gradient, shadow, ornamental dial animation, or pointer-only interaction. Vertical drag, Shift for the fine step, arrow / page / home / end keys, double-click reset.',
+					'One rotary implementation only; a second is a defect. Visually rotary over a native <input type="range"> so the accessibility tree keeps slider semantics. Label above the dial, value + unit text below. No canvas, gradient, shadow, ornamental dial animation, or pointer-only interaction. Vertical drag, Shift for the fine step, arrow / page / home / end keys.',
 				variants: [
 					'Continuous — the default; free decimals within min/max.',
 					'Stepped — integer-only detents for octave, semitone, max voices, root note.',
-					'Log-mapped — cutoff and start/end frequency travel logarithmically while the number field stays linear in Hz; the marker always shows the real value.',
+					'Log-mapped — frequency parameters travel logarithmically while the number field stays linear in Hz. Every log-mapped parameter now lives on DualRotaryPot, but the mapping belongs here and is shared out of pot-interaction.ts.',
 					'Readout format changes per parameter, the control does not: plain value + unit, C4 (60) for root note, C / L50 / R30 for pan, effective BPM for tempo.',
-					'Numeric field and reset button are part of this component, not separate elements.'
+					'No reset button. Double-click anywhere on the control body is the only reset path, which buys back the space a button would cost in a strip repeated sixteen times.',
+					'The number field is revealed, not resident: a click or Enter swaps the label for it in place, and blur/Escape/Enter restores the label. It stays open while a validation error is showing, so the reason an entry was rejected is never hidden. The reserved label height means opening it never shifts the layout.',
+					'Interaction lives in a shared pot-interaction.ts consumed by all three pots, so the rotary, dual, and linear controls cannot drift apart in feel.'
 				]
 			},
 			{
@@ -88,7 +77,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				],
 				mixer: ['Master compressor threshold + ratio', 'Master compressor attack + release'],
 				transport: [],
-				source: 'Proposed — not in 09B/10B; needs approval before implementation',
+				source: 'Adopted in design; absent from 09B/10B — 09B §4.3 bank list needs amending',
 				guidance:
 					'Concentric pot in the guitar-pedal idiom: an outer ring and an inner disc sharing one footprint, with a paired label reading OUTER —o— INNER. Only pair parameters of the same family — filter with filter, time with time — because a cross-family pair reads as an accident. Built as two RotaryPot instances composed into one dial, never as a second rotary implementation. Removes about seven dials from the instrument editor and master strip.',
 				variants: [
@@ -108,7 +97,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '10B §4.4–4.5 · conventions §5.2',
 				guidance:
-					'Vertical travel instead of rotation; everything else matches RotaryPot — same number field, reset, keyboard, live/commit, and error behavior. Channel volume is always a fader and is never banked with pan. Design the throw length so a 16-channel rail still fits at 1024×640.',
+					'Vertical travel instead of rotation; everything else matches RotaryPot — same revealed number field, double-click reset, keyboard, live/commit, and error behavior. Channel volume is always a fader and is never banked with pan. Design the throw length so a 16-channel rail still fits at 1024×640.',
 				variants: [
 					'Master volume — 10B §4.5 only says "dedicated" without naming the form. Recommendation: the same fader, so Master reads as a strip.',
 					'Labelled Volume everywhere in the UI, because on a board Gain is the input trim and Volume is the fader. The schema keeps mix.gain and master.gain untouched — this is a display name only, and a deliberate deviation from the literal wording of 10B §4.3.'
@@ -135,10 +124,8 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				instrument: [
 					'Tuning O / S / F',
 					'Pitched amplitude A / D / S / R',
-					'Vibrato Rate / Depth',
 					'Oscillator layer A / D / S / R',
 					'Noise layer A / D / S / R',
-					'Oscillator Start / End frequency',
 					'Mono / Poly voice mode'
 				],
 				mixer: [],
@@ -150,7 +137,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 					'Banked pot — the dominant layout: this switch sits directly above one shared RotaryPot. Design the pair together; there is no separate component for it.',
 					'Two-position with full words for Mono / Poly, rather than initials. Recommended over a "Polyphonic" checkbox, which hides the mono state.',
 					'Compact initials need hover and focus help carrying the full name.',
-					'Vibrato Rate/Depth and oscillator Start/End are proposed to move to DualRotaryPot, leaving the three-way O/S/F tuning bank, both four-member A/D/S/R banks, and Mono/Poly here.'
+					'Vibrato Rate/Depth and oscillator Start/End have moved to DualRotaryPot, which shows both values at once instead of one. What remains here is the three-way O/S/F tuning bank, both four-member A/D/S/R banks, and Mono/Poly — so every surviving bank has three or more members.'
 				]
 			}
 		]

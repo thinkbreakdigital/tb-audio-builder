@@ -1,5 +1,28 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
 	import { UI_ELEMENT_CATALOG } from './catalog.js';
+	import DualRotaryPot from './elements/DualRotaryPot.svelte';
+	import FieldText from './elements/FieldText.svelte';
+	import LevelMeter from './elements/LevelMeter.svelte';
+	import LinearPot from './elements/LinearPot.svelte';
+	import RotaryPot from './elements/RotaryPot.svelte';
+	import ScrubSlider from './elements/ScrubSlider.svelte';
+	import SegmentSwitch from './elements/SegmentSwitch.svelte';
+	import SignalStatus from './elements/SignalStatus.svelte';
+	import ValueReadout from './elements/ValueReadout.svelte';
+
+	// Slots stay empty until a specimen exists for that row; the box is the design placeholder.
+	const SPECIMENS: Record<string, Component> = {
+		'rotary-pot': RotaryPot,
+		'dual-rotary-pot': DualRotaryPot,
+		'linear-pot': LinearPot,
+		'scrub-slider': ScrubSlider,
+		'segment-switch': SegmentSwitch,
+		'level-meter': LevelMeter,
+		'signal-status': SignalStatus,
+		'value-readout': ValueReadout,
+		'field-text': FieldText
+	};
 </script>
 
 <svelte:head>
@@ -26,7 +49,12 @@
 				{#each group.rows as row (row.slug)}
 					<tr>
 						<td class="slot">
-							<div class="slot-box" data-slot={row.slug}></div>
+							<div class="slot-box" data-slot={row.slug}>
+								{#if SPECIMENS[row.slug] !== undefined}
+									{@const Specimen = SPECIMENS[row.slug]}
+									<Specimen />
+								{/if}
+							</div>
 						</td>
 						<th scope="row" class="name">
 							<span class="element-name">{row.name}</span>
@@ -138,8 +166,12 @@
 	}
 
 	.slot-box {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		min-width: 120px;
 		min-height: 96px;
+		padding: var(--space-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-background);

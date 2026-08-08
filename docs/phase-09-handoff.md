@@ -19,7 +19,7 @@ The application keeps one top-level `Instrument | Mixer` tab bar.
 
 - **Instrument** follows the selected channel and owns channel name/role/`Include in playback`/
   reset, synthesis settings, instrument presets, and preview.
-- **Mixer** is the one global mixer. It owns all channel gain, pan, mute, solo, meters and
+- **Mixer** is the one global mixer. It owns all channel volume, pan, mute, solo, meters and
   audibility, plus loop, sound sets, normalization, and master controls.
 
 There is no nested `channelTab`, focused channel Mixer, or duplicate channel-mix surface.
@@ -61,8 +61,8 @@ change.
 
 Do not create or wire these until explicit design approval:
 
-- `ParameterKnob.svelte`, `SegmentedParameterSelector.svelte`, `ParameterBank.svelte`,
-  `ControlGroup.svelte`, and their pure interaction/formatting helper tests.
+- `ParameterKnob.svelte`, `DualParameterKnob.svelte`, `SegmentedParameterSelector.svelte`,
+  `ParameterBank.svelte`, `ControlGroup.svelte`, and their pure interaction/formatting helper tests.
 - Pitched/percussion instrument panels and percussion layer presentation.
 - Instrument preset header, searchable browser, rendered Factory/User distinction, Save As dialog,
   non-destructive Apply/Cancel audition, and delete/overwrite confirmations. The underlying catalog
@@ -71,9 +71,11 @@ Do not create or wire these until explicit design approval:
 - Channel-header role/reset wiring changes and replacement confirmations.
 - Sound-set presentation. Sound sets ultimately render in the one global Mixer, not Instrument.
 
-The compact-control proposal remains a review input: O/S/F tuning; A/D/S/R envelopes; Rate/Depth
-vibrato; percussion Start/End; dedicated filters, gains, root note, master, and compressor. It is
-not a finished layout decision merely because the bank metadata exists.
+The compact-control proposal remains a review input: O/S/F tuning and A/D/S/R envelopes stay banked;
+filter and noise-layer cutoff+resonance, vibrato rate+depth, and oscillator start+end frequency pair
+onto the concentric `DualParameterKnob` instead of a bank; root note, layer gains, master, and
+compressor knee stay dedicated. It is not a finished layout decision merely because the bank/pair
+metadata exists.
 
 ## Wiring map for the 09B agent
 
@@ -86,7 +88,7 @@ After approval, wire in this order:
    wiring defect. Bank selection is ephemeral and must not call audio, mutate the project,
    autosave, or sync.
 3. Read the selected channel from `uiState.selectedChannelId`. Render synthesis controls only in
-   top-level Instrument. Never render Gain/Pan/Mute/Solo there.
+   top-level Instrument. Never render Volume/Pan/Mute/Solo there.
 4. For a numeric live interaction, call `applyInstrumentEdit` on a temporary definition and the
    engine's direct channel-instrument setter. On commit, call one `projectState.updateChannel`, then
    `engineClient.syncChannel`. Cancel restores the committed definition.
