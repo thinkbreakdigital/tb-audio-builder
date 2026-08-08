@@ -438,6 +438,28 @@ describe('createPitchedVoiceFactory — lifecycle', () => {
 		);
 	});
 
+	it('anchors stop() to the already-running release phase without jumping gain upward', () => {
+		const harness = startVoice({
+			instrument: makeInstrument({
+				amplitudeEnvelope: {
+					attackSeconds: 0.01,
+					decaySeconds: 0.05,
+					sustainLevel: 0.8,
+					releaseSeconds: 1
+				}
+			}),
+			releaseAtSeconds: 2
+		});
+
+		harness.voice.stop(2.5);
+
+		const stopAnchor = harness.envelopeGain.gain.automation.at(-2);
+		expect(stopAnchor?.method).toBe('setValueAtTime');
+		expect(stopAnchor?.atSeconds).toBe(2.5);
+		expect(stopAnchor?.value).toBeCloseTo(0.4, 9);
+		expect(stopAnchor?.value).toBeLessThanOrEqual(0.8);
+	});
+
 	it('disconnects every node it created and notifies each listener exactly once on end', () => {
 		const harness = startVoice({
 			instrument: makeInstrument({

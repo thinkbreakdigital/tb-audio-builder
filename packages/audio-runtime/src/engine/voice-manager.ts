@@ -114,6 +114,13 @@ export function createVoiceManager(input: {
 	// always-increasing namespace so it never collides with a real timeline sequence.
 	let nextFallbackSequence = 0;
 
+	function maxLiveVoiceCount(): number {
+		// One allocation tier plus, at most, one bounded tail for every allocation. This permits
+		// click-safe stealing without allowing a dense burst to grow live Web Audio resources without
+		// bound while old oscillators wait for their ended events.
+		return Math.max(0, limits.maxTotalVoices * 2);
+	}
+
 	function recordsForChannel(channelId: string): VoiceRecord[] {
 		return [...activeRecords].filter((record) => record.channelId === channelId);
 	}
@@ -154,6 +161,13 @@ export function createVoiceManager(input: {
 		const chokeGroup = resolveChokeGroup(request.instrument);
 		const channelLimit = effectiveChannelLimit(request.channelId, request.instrument);
 		const sequence = request.sequence ?? nextFallbackSequence++;
+
+		// Do not steal another voice if no resource slot exists for the incoming one: stealing only
+		// moves the victim into the tail tier, so it cannot make room under this hard live ceiling.
+		if (activeRecords.size + releasingRecords.size >= maxLiveVoiceCount()) {
+			droppedVoiceCount++;
+			return null;
+		}
 
 		// A rapid pause/resume cycle must not stack full user-configured release tails. As soon as new
 		// playback is scheduled, any tails left by releaseAll() are converted to the bounded steal tail.

@@ -122,15 +122,10 @@ export function createAudioContextController(options?: {
 		}
 	}
 
-	async function resume(): Promise<void> {
-		if (context === null) return initialize();
-		try {
-			await asManagedContext(context).resume();
-			setStatus(mapContextState(context.state));
-		} catch (cause) {
-			setStatus('failed');
-			throw new AudioInitializationError('AudioContextController.resume() failed.', { cause });
-		}
+	function resume(): Promise<void> {
+		// Initialization already owns the one in-flight create/resume promise. Reusing it here keeps
+		// concurrent gesture handlers from issuing duplicate resume() calls or racing graph creation.
+		return initialize();
 	}
 
 	async function close(): Promise<void> {

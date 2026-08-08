@@ -288,6 +288,23 @@ describe('createTransport', () => {
 		expect(harness.transport.positionTicks).toBeCloseTo(pausedTick, 6);
 	});
 
+	it('promotes queued loop origins only as each wrap becomes audible', () => {
+		const harness = setupTransport({
+			durationTicks: 24,
+			channels: [{ notes: [{ tick: 0, durationTicks: 12 }] }]
+		});
+		harness.transport.setLoop({ enabled: true, startTick: 0, endTick: 24 });
+		harness.transport.play();
+
+		// The initial 100ms look-ahead queues wraps at .025, .05, .075, and .1 seconds. At .03
+		// exactly one origin is audible; at .08 three are. Both reads must report 4.8 ticks into the
+		// current pass rather than using the scheduler's furthest-ahead origin.
+		harness.fake.advanceTimeTo(0.03);
+		expect(harness.transport.positionTicks).toBeCloseTo(4.8, 9);
+		harness.fake.advanceTimeTo(0.08);
+		expect(harness.transport.positionTicks).toBeCloseTo(4.8, 9);
+	});
+
 	it('stops its interval at natural completion, holds the end position, and restarts at zero', () => {
 		const harness = setupTransport({
 			durationTicks: 960,
@@ -299,6 +316,9 @@ describe('createTransport', () => {
 		expect(harness.transport.status).toBe('stopped');
 		expect(harness.transport.positionTicks).toBe(960);
 		expect(vi.getTimerCount()).toBe(0);
+		// Natural completion stops scheduling, but does not hard-cut the final note's release tail.
+		expect(harness.voices[0]?.request.releaseAtSeconds).toBeCloseTo(1, 9);
+		expect(harness.voices[0]?.stoppedAtSeconds).toBeNull();
 
 		harness.transport.play();
 		expect(harness.transport.status).toBe('playing');
@@ -361,6 +381,41 @@ describe('createTransport', () => {
 });
 
 describe('createAudioEngine', () => {
+	it('isolates playback-error subscribers and emits one retained error per scheduler failure', async () => {
+		const harness = setupEngine();
+		harness.engine.loadProject(
+			buildSong({
+				durationTicks: 1,
+				loop: { enabled: true, startTick: 0, endTick: 1 },
+				channels: [{ notes: [{ tick: 0, durationTicks: 1 }] }]
+			})
+		);
+		await harness.engine.initialize();
+
+		let throwingCalls = 0;
+		let laterCalls = 0;
+		let unsubscribedCalls = 0;
+		harness.engine.onPlaybackError(() => {
+			throwingCalls += 1;
+			throw new Error('subscriber failure');
+		});
+		harness.engine.onPlaybackError(() => {
+			laterCalls += 1;
+		});
+		const unsubscribe = harness.engine.onPlaybackError(() => {
+			unsubscribedCalls += 1;
+		});
+		unsubscribe();
+
+		expect(() => harness.engine.play()).not.toThrow();
+		expect(harness.engine.lastPlaybackError).toBeInstanceOf(PlaybackError);
+		expect(throwingCalls).toBe(1);
+		expect(laterCalls).toBe(1);
+		expect(unsubscribedCalls).toBe(0);
+		expect(harness.engine.status).toBe('paused');
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
 	it('plays a 4-track fixture, dispatching every note exactly once at the right time', async () => {
 		const harness = setupEngine();
 		const built = buildFourTrackFixture();
@@ -554,18 +609,78 @@ describe('createAudioEngine', () => {
 		expect(harness.pitchedVoices[0]?.releasedAtSeconds).toBe(0.5);
 	});
 
-	it('repeated initialize and suspended-context recovery reuse the existing graph', async () => {
+	it('beginPreview reports its own action and returns null before audio initialization', () => {
+		const harness = setupEngine();
+		harness.engine.loadProject(buildFourTrackFixture());
+
+		expect(harness.engine.beginPreview('ch-1', 64, 0.9)).toBeNull();
+		expect(() => harness.engine.beginPreview('missing', 64, 0.9)).toThrow(
+			/AudioEngine\.beginPreview: no channel "missing"/
+		);
+	});
+
+	it('preview release and stop are independently idempotent, with stop hard-cutting a release', async () => {
+		const harness = setupEngine();
+		harness.engine.loadProject(buildFourTrackFixture());
+		await harness.engine.initialize();
+		const handle = harness.engine.beginPreview('ch-1', 64, 0.9);
+		const voice = harness.pitchedVoices[0] as SilentVoice;
+
+		harness.fake.advanceTimeTo(0.5);
+		handle?.release();
+		harness.fake.advanceTimeTo(0.6);
+		handle?.release();
+		expect(voice.releasedAtSeconds).toBe(0.5);
+
+		handle?.stop();
+		harness.fake.advanceTimeTo(0.7);
+		handle?.stop();
+		handle?.release();
+		expect(voice.stoppedAtSeconds).toBe(0.6);
+		expect(voice.releasedAtSeconds).toBe(0.5);
+	});
+
+	it('invalidates preview handles across project reload and dispose', async () => {
+		const harness = setupEngine();
+		harness.engine.loadProject(buildFourTrackFixture());
+		await harness.engine.initialize();
+		const reloadHandle = harness.engine.beginPreview('ch-1', 64, 0.9);
+		const reloadVoice = harness.pitchedVoices[0] as SilentVoice;
+
+		harness.engine.loadProject(buildFourTrackFixture());
+		expect(reloadVoice.stoppedAtSeconds).toBe(0);
+		harness.fake.advanceTimeTo(1);
+		expect(() => reloadHandle?.stop()).not.toThrow();
+		expect(reloadVoice.stoppedAtSeconds).toBe(0);
+
+		const disposeHandle = harness.engine.beginPreview('ch-1', 65, 0.9);
+		const disposeVoice = harness.pitchedVoices[1] as SilentVoice;
+		harness.engine.dispose();
+		expect(disposeVoice.stoppedAtSeconds).toBe(1);
+		expect(() => disposeHandle?.release()).not.toThrow();
+		expect(() => disposeHandle?.stop()).not.toThrow();
+		expect(disposeVoice.releasedAtSeconds).toBeNull();
+		expect(disposeVoice.stoppedAtSeconds).toBe(1);
+	});
+
+	it('repeated initialize and concurrent suspended-context recovery reuse one context and graph', async () => {
 		const harness = setupEngine();
 		harness.engine.loadProject(buildFourTrackFixture());
 		await harness.engine.initialize();
 		const createdNodeCount = harness.fake.createdNodes.length;
+		expect(harness.fake.resumeCallCount).toBe(1);
 
 		await harness.engine.initialize();
 		expect(harness.fake.createdNodes).toHaveLength(createdNodeCount);
 		harness.fake.setState('suspended');
 		expect(harness.engine.audioContextStatus).toBe('suspended');
-		await harness.engine.resumeAudioContext();
+		await Promise.all([
+			harness.engine.resumeAudioContext(),
+			harness.engine.resumeAudioContext(),
+			harness.engine.resumeAudioContext()
+		]);
 		expect(harness.engine.audioContextStatus).toBe('running');
+		expect(harness.fake.resumeCallCount).toBe(2);
 		expect(harness.fake.createdNodes).toHaveLength(createdNodeCount);
 	});
 });

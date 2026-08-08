@@ -51,6 +51,7 @@ class PitchedVoiceImpl implements Voice {
 
 	private scheduledReleaseAtSeconds = Infinity;
 	private tailEndSeconds = Infinity;
+	private releaseStartValue = 0;
 	private ended = false;
 	private endedListeners: Array<() => void> = [];
 
@@ -157,12 +158,7 @@ class PitchedVoiceImpl implements Voice {
 
 		// A hard cut still gets a short ramp — stopping an oscillator mid-cycle at full gain clicks.
 		const gain = envelopeGain.gain;
-		const currentValue = adsrLevelAtSeconds({
-			startAtSeconds: this.startedAtSeconds,
-			peakValue: this.peakValue,
-			settings: this.instrument.amplitudeEnvelope,
-			atSeconds
-		});
+		const currentValue = this.envelopeLevelAt(atSeconds);
 		gain.cancelScheduledValues(atSeconds);
 		gain.setValueAtTime(currentValue, atSeconds);
 		gain.linearRampToValueAtTime(0, atSeconds + CHOKE_STOP_RAMP_SECONDS);
@@ -189,22 +185,39 @@ class PitchedVoiceImpl implements Voice {
 		const oscillator = this.oscillator;
 		if (envelopeGain === null || oscillator === null) return;
 
+		this.releaseStartValue = adsrLevelAtSeconds({
+			startAtSeconds: this.startedAtSeconds,
+			peakValue: this.peakValue,
+			settings: this.instrument.amplitudeEnvelope,
+			atSeconds
+		});
 		this.scheduledReleaseAtSeconds = atSeconds;
 		this.tailEndSeconds = applyRelease({
 			param: envelopeGain.gain,
 			releaseAtSeconds: atSeconds,
 			settings: this.instrument.amplitudeEnvelope,
-			fromValue: adsrLevelAtSeconds({
-				startAtSeconds: this.startedAtSeconds,
-				peakValue: this.peakValue,
-				settings: this.instrument.amplitudeEnvelope,
-				atSeconds
-			})
+			fromValue: this.releaseStartValue
 		});
 		// Re-stopping an already-scheduled oscillator is legal; the latest call wins.
 		const stopAtSeconds = this.tailEndSeconds + OSCILLATOR_TAIL_MARGIN_SECONDS;
 		oscillator.stop(stopAtSeconds);
 		this.vibratoOscillator?.stop(stopAtSeconds);
+	}
+
+	private envelopeLevelAt(atSeconds: number): number {
+		if (atSeconds < this.scheduledReleaseAtSeconds) {
+			return adsrLevelAtSeconds({
+				startAtSeconds: this.startedAtSeconds,
+				peakValue: this.peakValue,
+				settings: this.instrument.amplitudeEnvelope,
+				atSeconds
+			});
+		}
+		if (atSeconds >= this.tailEndSeconds) return 0;
+		const releaseDuration = this.tailEndSeconds - this.scheduledReleaseAtSeconds;
+		if (releaseDuration <= 0) return 0;
+		const releaseProgress = (atSeconds - this.scheduledReleaseAtSeconds) / releaseDuration;
+		return this.releaseStartValue * (1 - releaseProgress);
 	}
 
 	/**

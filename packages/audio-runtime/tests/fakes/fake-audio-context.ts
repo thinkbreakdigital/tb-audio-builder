@@ -141,6 +141,7 @@ export interface FakeAudioContext {
 	readonly currentTime: number;
 	readonly sampleRate: number;
 	readonly state: 'suspended' | 'running' | 'closed';
+	readonly resumeCallCount: number;
 	readonly destination: FakeAudioNode;
 	readonly createdNodes: readonly FakeAudioNode[]; // every node ever created, in creation order
 	/** Test-only clock control. Monotonic — throws if moved backwards. */
@@ -412,6 +413,7 @@ class FakeAudioContextImpl implements FakeAudioContext {
 	readonly destination: FakeAudioNode;
 	private time = 0;
 	private contextState: 'suspended' | 'running' | 'closed' = 'suspended';
+	private resumeCalls = 0;
 	private readonly nodes: FakeAudioNode[] = [];
 	private readonly listeners = new Map<string, Set<() => void>>();
 	private readonly readBuffers: Float32Array[] = [];
@@ -427,6 +429,10 @@ class FakeAudioContextImpl implements FakeAudioContext {
 
 	get state(): 'suspended' | 'running' | 'closed' {
 		return this.contextState;
+	}
+
+	get resumeCallCount(): number {
+		return this.resumeCalls;
 	}
 
 	get createdNodes(): readonly FakeAudioNode[] {
@@ -497,6 +503,7 @@ class FakeAudioContextImpl implements FakeAudioContext {
 	}
 
 	async resume(): Promise<void> {
+		this.resumeCalls += 1;
 		this.setState('running');
 	}
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createVoiceManager } from '../src/engine/voice-manager.js';
 import type { VoiceManager, VoiceManagerLimits } from '../src/engine/voice-manager.js';
 import { createVoiceFactoryRegistry } from '../src/synth/voice.js';
-import type { VoiceStartRequest } from '../src/synth/voice.js';
+import type { Voice, VoiceFactory, VoiceStartRequest } from '../src/synth/voice.js';
 import { createSilentVoiceFactory } from '../src/synth/silent-voice.js';
 import type { SilentVoice } from '../src/synth/silent-voice.js';
 import type {
@@ -131,6 +131,47 @@ function setupManager(options?: {
 	};
 }
 
+class StickyVoice implements Voice {
+	readonly channelId: string;
+	readonly midiNote: number;
+	readonly startedAtSeconds: number;
+	readonly priority = 'normal' as const;
+	isReleasing = false;
+	private endedListeners: Array<() => void> = [];
+
+	constructor(readonly request: VoiceStartRequest) {
+		this.channelId = request.channelId;
+		this.midiNote = request.midiNote;
+		this.startedAtSeconds = request.startAtSeconds;
+	}
+
+	release(): void {
+		this.isReleasing = true;
+	}
+
+	steal(): void {
+		this.isReleasing = true;
+	}
+
+	stop(): void {
+		this.endNow();
+	}
+
+	onEnded(listener: () => void): void {
+		this.endedListeners.push(listener);
+	}
+
+	dispose(): void {
+		this.endedListeners = [];
+	}
+
+	endNow(): void {
+		const listeners = this.endedListeners;
+		this.endedListeners = [];
+		for (const listener of listeners) listener();
+	}
+}
+
 /** Deterministic per-seed shuffle (no `Math.random`) so the 100-run tie-break test is reproducible. */
 function seededShuffle<T>(items: readonly T[], seed: number): T[] {
 	const result = [...items];
@@ -149,6 +190,48 @@ function seededShuffle<T>(items: readonly T[], seed: number): T[] {
 }
 
 describe('createVoiceManager', () => {
+	it('enforces a hard live-resource ceiling during dense stealing, then accepts after reclaim', () => {
+		const created: StickyVoice[] = [];
+		const factory: VoiceFactory = {
+			kind: 'pitched',
+			create(request) {
+				const voice = new StickyVoice(request);
+				created.push(voice);
+				return voice;
+			}
+		};
+		const registry = createVoiceFactoryRegistry();
+		registry.register(factory);
+		const manager = createVoiceManager({
+			registry,
+			limits: { maxTotalVoices: 2, maxVoicesPerChannel: 2 }
+		});
+		const instrument = makePitchedInstrument({ maxVoices: 2 });
+
+		for (let sequence = 0; sequence < 10; sequence += 1) {
+			manager.start(
+				makeRequest({ channelId: 'dense', instrument, startAtSeconds: sequence, sequence }),
+				'normal'
+			);
+		}
+
+		// Two allocation slots plus at most one bounded steal tail per slot.
+		expect(manager.activeVoiceCount).toBe(4);
+		expect(created).toHaveLength(4);
+		expect(manager.droppedVoiceCount).toBe(6);
+
+		created[0]?.endNow();
+		expect(manager.activeVoiceCount).toBe(3);
+		expect(
+			manager.start(
+				makeRequest({ channelId: 'dense', instrument, startAtSeconds: 10, sequence: 10 }),
+				'normal'
+			)
+		).not.toBeNull();
+		expect(manager.activeVoiceCount).toBe(4);
+		expect(created).toHaveLength(5);
+	});
+
 	it('releases the oldest voice on a channel when the per-channel limit is reached', () => {
 		const { manager, pitchedVoices } = setupManager({ maxVoicesPerChannelOverride: () => 2 });
 		const instrument = makePitchedInstrument();

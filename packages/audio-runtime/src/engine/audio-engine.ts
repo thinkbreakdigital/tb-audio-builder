@@ -171,6 +171,7 @@ export function createAudioEngine(options?: {
 	let disposed = false;
 	let lastPlaybackError: PlaybackError | null = null;
 	const playbackErrorListeners = new Set<(error: PlaybackError) => void>();
+	let graphGeneration = 0;
 
 	function ensureNotDisposed(action: string): void {
 		if (disposed) {
@@ -276,9 +277,10 @@ export function createAudioEngine(options?: {
 		channelId: string,
 		midiNote: number,
 		velocity: number,
-		releaseAtSeconds: number
+		releaseAtSeconds: number,
+		action: 'triggerPreview' | 'beginPreview'
 	) {
-		const channel = requireChannel(channelId, 'triggerPreview');
+		const channel = requireChannel(channelId, action);
 		const context = controller.context;
 		const bus = channelBuses.get(channelId);
 		if (context === null || bus === undefined || channel.instrument === null) return null;
@@ -339,6 +341,7 @@ export function createAudioEngine(options?: {
 	};
 
 	function teardownGraph(): void {
+		graphGeneration += 1;
 		transport?.dispose();
 		transport = null;
 		// Stops and disposes every voice and clears the manager's state; the manager itself is
@@ -383,7 +386,15 @@ export function createAudioEngine(options?: {
 			settings: options?.schedulerSettings,
 			onError(error) {
 				lastPlaybackError = error;
-				for (const listener of playbackErrorListeners) listener(error);
+				for (const listener of [...playbackErrorListeners]) {
+					// Playback diagnostics are an event boundary: one faulty UI subscriber must neither
+					// prevent later subscribers nor escape into the scheduler interval.
+					try {
+						listener(error);
+					} catch {
+						// The engine retains the original error in lastPlaybackError for diagnostics.
+					}
+				}
 			}
 		});
 		transport.setTempoMultiplier(tempoMultiplier);
@@ -592,23 +603,31 @@ export function createAudioEngine(options?: {
 		triggerPreview(channelId: string, midiNote: number, velocity: number): void {
 			ensureNotDisposed('triggerPreview()');
 			const startAtSeconds = nowSeconds() + PREVIEW_START_OFFSET_SECONDS;
-			startPreviewVoice(channelId, midiNote, velocity, startAtSeconds + PREVIEW_RELEASE_SECONDS);
+			startPreviewVoice(
+				channelId,
+				midiNote,
+				velocity,
+				startAtSeconds + PREVIEW_RELEASE_SECONDS,
+				'triggerPreview'
+			);
 		},
 
 		beginPreview(channelId: string, midiNote: number, velocity: number): PreviewHandle | null {
 			ensureNotDisposed('beginPreview()');
-			const voice = startPreviewVoice(channelId, midiNote, velocity, Infinity);
+			const voice = startPreviewVoice(channelId, midiNote, velocity, Infinity, 'beginPreview');
 			if (voice === null) return null;
-			let finished = false;
+			const generation = graphGeneration;
+			let released = false;
+			let stopped = false;
 			return {
 				release(): void {
-					if (finished) return;
-					finished = true;
+					if (released || stopped || generation !== graphGeneration) return;
+					released = true;
 					voice.release(nowSeconds());
 				},
 				stop(): void {
-					if (finished) return;
-					finished = true;
+					if (stopped || generation !== graphGeneration) return;
+					stopped = true;
 					voice.stop(nowSeconds());
 				}
 			};
