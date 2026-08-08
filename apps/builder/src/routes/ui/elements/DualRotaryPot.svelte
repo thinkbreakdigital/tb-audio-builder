@@ -261,7 +261,7 @@
 			read off the connection rather than guessed. The arc is deliberately open on the right so
 			the inner disc's lead line can exit through the gap.
 		-->
-		<svg class="glyph" width="26" height="12" viewBox="0 0 26 12" aria-hidden="true">
+		<svg class="glyph" width="19.6" height="12" viewBox="0 0 19.6 12" aria-hidden="true">
 			<!-- Outer ring: semicircle open to the right, lead line out to the left-hand name. -->
 			<path
 				d="M11 1 A5 5 0 0 0 11 11"
@@ -271,9 +271,12 @@
 				stroke-linecap="round"
 			/>
 			<path d="M6 6 H0.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-			<!-- Inner disc: dot at the centre, lead line out through the open side to the right. -->
+			<!-- Inner disc: dot at the centre, lead line out through the open side to the right.
+			     Both leads are 5.5 units: the left runs 6 to 0.5, the right 13.6 to 19.1, each
+			     ending 0.5 from its edge. Keep them equal if this is ever resized — an asymmetric
+			     pair reads as one parameter being subordinate to the other. -->
 			<circle cx="11" cy="6" r="1.9" fill="currentColor" />
-			<path d="M13.6 6 H25.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+			<path d="M13.6 6 H19.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
 		</svg>
 
 		<label for={innerRangeId} class="name-label" aria-label={innerLabel} title={innerLabel}>
