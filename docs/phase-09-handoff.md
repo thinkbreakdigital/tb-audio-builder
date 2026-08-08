@@ -6,6 +6,9 @@ Phase 09 is split into two explicit milestones:
 - **09B — instrument UI/UX design and wiring:** intentionally paused until the proposed compact
   workflow is manually reviewed and explicitly approved.
 
+Executable documents: delivered 09A is `spec/implementation/09-instrument-editor-ui.md`; paused
+09B is `spec/implementation/09b-instrument-editor-ui.md`.
+
 This boundary is deliberate. The underlying audio/state contracts can advance without committing
 the product to a speculative knob layout, control density, preset browser, or preview interaction.
 The next agent must not treat the detailed UI notes as authorization to render them.
@@ -109,7 +112,7 @@ After approval, wire in this order:
    trim/case/separator-insensitive, treating runs of whitespace, `_`, and `-` as equivalent.
    Keep browsing/audition temporary until Apply. Preset value changes must not move the currently selected
    parameter-bank member.
-8. Leave the global Mixer placeholder for phase 10. Clicking a channel name there will select the
+8. Leave the global Mixer placeholder for phase 10B. Clicking a channel name there will select the
    channel and return to top-level Instrument; it will never open a per-channel mixer.
 
 Audio failure must leave all Instrument editing and later persistence available. Custom preset and

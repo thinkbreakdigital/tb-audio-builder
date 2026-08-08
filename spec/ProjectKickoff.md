@@ -206,6 +206,11 @@ visible text or unambiguous accessible names and help text. Factory presets cann
 Compact mixer strips use a vertical gain fader, a pan knob, text `MUTE`/`SOLO` toggles, a meter,
 and textual audibility. The workspace MUST remain usable at 1024×640 and at 200% zoom.
 
+Implementation is deliberately split at the rendering boundary. Phase 09A's non-rendering
+instrument/preset foundation is delivered; phase 10A's headless transport/global-Mixer foundation
+is active. Rendered Instrument phase 09B and rendered transport/global-Mixer phase 10B are paused
+and MUST be designed and approved together before either changes the visible workspace.
+
 ---
 
 ## 6. Project scope
