@@ -2,10 +2,12 @@
  * Temporary UI state: not part of `BuilderProject`, never persisted, cleared on reload.
  */
 
-export type MainView = 'instrument' | 'mixer';
+export type MainView = 'channel-editor' | 'mixer-overview';
+export type ChannelTab = 'instrument' | 'mixer';
 
 let selectedChannelId = $state<string | null>(null);
-let mainView = $state<MainView>('instrument');
+let mainView = $state<MainView>('channel-editor');
+let channelTab = $state<ChannelTab>('instrument');
 let openDialog = $state<string | null>(null);
 
 export const uiState = {
@@ -14,6 +16,9 @@ export const uiState = {
 	},
 	get mainView(): MainView {
 		return mainView;
+	},
+	get channelTab(): ChannelTab {
+		return channelTab;
 	},
 	get openDialog(): string | null {
 		return openDialog;
@@ -25,6 +30,10 @@ export const uiState = {
 
 	setMainView(view: MainView): void {
 		mainView = view;
+	},
+
+	setChannelTab(tab: ChannelTab): void {
+		channelTab = tab;
 	},
 
 	setOpenDialog(dialogId: string | null): void {

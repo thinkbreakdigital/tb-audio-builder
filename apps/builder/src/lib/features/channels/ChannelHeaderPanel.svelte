@@ -119,7 +119,7 @@
 				onchange={handleRoleChange}
 			/>
 			<CheckboxField
-				label="Enabled"
+				label="Include in playback"
 				id="channel-enabled"
 				checked={channel.enabled}
 				onchange={handleEnabledChange}
