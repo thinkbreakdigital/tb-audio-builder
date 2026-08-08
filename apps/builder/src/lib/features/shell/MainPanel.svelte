@@ -4,79 +4,56 @@
 	import ImportSummary from '$lib/features/midi-import/ImportSummary.svelte';
 	import MidiDropZone from '$lib/features/midi-import/MidiDropZone.svelte';
 	import { projectState } from '$lib/state/project.svelte.js';
-	import { uiState, type ChannelTab, type MainView } from '$lib/state/ui.svelte.js';
+	import { uiState, type MainView } from '$lib/state/ui.svelte.js';
 
-	interface MainTabDefinition {
+	interface Tab {
 		id: MainView;
 		label: string;
 	}
 
-	interface ChannelTabDefinition {
-		id: ChannelTab;
-		label: string;
-	}
-
-	const MAIN_TABS: readonly MainTabDefinition[] = [
-		{ id: 'channel-editor', label: 'Channel Editor' },
-		{ id: 'mixer-overview', label: 'Mixer Overview' }
-	];
-	const CHANNEL_TABS: readonly ChannelTabDefinition[] = [
+	const TABS: Tab[] = [
 		{ id: 'instrument', label: 'Instrument' },
 		{ id: 'mixer', label: 'Mixer' }
 	];
 
-	let mainTabElements = $state<(HTMLButtonElement | undefined)[]>([]);
-	let channelTabElements = $state<(HTMLButtonElement | undefined)[]>([]);
+	let tabElements = $state<(HTMLButtonElement | undefined)[]>([]);
 
-	function requestedTabIndex(event: KeyboardEvent, index: number, length: number): number | null {
-		if (event.key === 'ArrowRight') return (index + 1) % length;
-		if (event.key === 'ArrowLeft') return (index - 1 + length) % length;
-		if (event.key === 'Home') return 0;
-		if (event.key === 'End') return length - 1;
-		return null;
-	}
-
-	function handleMainTabKeydown(event: KeyboardEvent, index: number): void {
-		const nextIndex = requestedTabIndex(event, index, MAIN_TABS.length);
-		if (nextIndex === null) return;
-		event.preventDefault();
-		const tab = MAIN_TABS[nextIndex];
+	function selectTabAt(index: number) {
+		const tab = TABS[index];
 		if (tab === undefined) return;
 		uiState.setMainView(tab.id);
-		mainTabElements[nextIndex]?.focus();
+		tabElements[index]?.focus();
 	}
 
-	function handleChannelTabKeydown(event: KeyboardEvent, index: number): void {
-		const nextIndex = requestedTabIndex(event, index, CHANNEL_TABS.length);
+	function handleTabKeydown(event: KeyboardEvent, index: number) {
+		let nextIndex: number | null = null;
+		if (event.key === 'ArrowRight') nextIndex = (index + 1) % TABS.length;
+		else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + TABS.length) % TABS.length;
+		else if (event.key === 'Home') nextIndex = 0;
+		else if (event.key === 'End') nextIndex = TABS.length - 1;
 		if (nextIndex === null) return;
 		event.preventDefault();
-		const tab = CHANNEL_TABS[nextIndex];
-		if (tab === undefined) return;
-		uiState.setChannelTab(tab.id);
-		channelTabElements[nextIndex]?.focus();
+		selectTabAt(nextIndex);
 	}
 
 	const hasSong = $derived(projectState.project?.song != null);
-	const hasSelectedChannel = $derived(
-		projectState.channels.some((channel) => channel.id === uiState.selectedChannelId)
-	);
 </script>
 
 <main class="main-panel">
-	<div class="tab-bar main-tabs" role="tablist" aria-label="Workspace views">
-		{#each MAIN_TABS as tab, index (tab.id)}
+	<div class="tab-bar" role="tablist" aria-label="Editor views">
+		{#each TABS as tab, index (tab.id)}
 			<button
-				bind:this={mainTabElements[index]}
+				bind:this={tabElements[index]}
 				type="button"
 				role="tab"
-				id={`main-tab-${tab.id}`}
+				id="tab-{tab.id}"
 				class="tab"
 				class:selected={uiState.mainView === tab.id}
 				aria-selected={uiState.mainView === tab.id}
-				aria-controls={`main-panel-${tab.id}`}
+				aria-controls="panel-{tab.id}"
 				tabindex={uiState.mainView === tab.id ? 0 : -1}
 				onclick={() => uiState.setMainView(tab.id)}
-				onkeydown={(event) => handleMainTabKeydown(event, index)}
+				onkeydown={(event) => handleTabKeydown(event, index)}
 			>
 				{tab.label}
 			</button>
@@ -84,89 +61,44 @@
 	</div>
 
 	<div
-		class="main-tab-panel"
+		class="tab-body"
 		role="tabpanel"
-		id="main-panel-channel-editor"
-		aria-labelledby="main-tab-channel-editor"
-		hidden={uiState.mainView !== 'channel-editor'}
+		id="panel-instrument"
+		aria-labelledby="tab-instrument"
+		hidden={uiState.mainView !== 'instrument'}
 	>
 		{#if !hasSong}
-			<div class="panel-padding">
-				<MidiDropZone />
-			</div>
+			<MidiDropZone />
 		{:else}
-			{#if hasSelectedChannel}
-				<div class="header-padding"><ChannelHeaderPanel /></div>
+			{#if uiState.selectedChannelId !== null}
+				<ChannelHeaderPanel />
+				<EmptyState message="Instrument editing arrives in a later phase." />
+			{:else}
+				<EmptyState message="Select a channel to edit its instrument." />
 			{/if}
-
-			<div class="tab-bar channel-tabs" role="tablist" aria-label="Selected channel views">
-				{#each CHANNEL_TABS as tab, index (tab.id)}
-					<button
-						bind:this={channelTabElements[index]}
-						type="button"
-						role="tab"
-						id={`channel-tab-${tab.id}`}
-						class="tab compact"
-						class:selected={uiState.channelTab === tab.id}
-						aria-selected={uiState.channelTab === tab.id}
-						aria-controls={`channel-panel-${tab.id}`}
-						tabindex={uiState.channelTab === tab.id ? 0 : -1}
-						onclick={() => uiState.setChannelTab(tab.id)}
-						onkeydown={(event) => handleChannelTabKeydown(event, index)}
-					>
-						{tab.label}
-					</button>
-				{/each}
-			</div>
-
-			<div
-				class="channel-tab-panel panel-padding"
-				role="tabpanel"
-				id="channel-panel-instrument"
-				aria-labelledby="channel-tab-instrument"
-				hidden={uiState.channelTab !== 'instrument'}
-			>
-				{#if hasSelectedChannel}
-					<EmptyState message="Instrument controls arrive in phase 09." />
-				{:else}
-					<EmptyState message="Select a channel to edit its instrument." />
-				{/if}
-				<ImportSummary />
-			</div>
-
-			<div
-				class="channel-tab-panel panel-padding"
-				role="tabpanel"
-				id="channel-panel-mixer"
-				aria-labelledby="channel-tab-mixer"
-				hidden={uiState.channelTab !== 'mixer'}
-			>
-				<EmptyState
-					message={hasSelectedChannel
-						? 'Channel mixing controls arrive in phase 10.'
-						: 'Select a channel to mix.'}
-				/>
-			</div>
+			<!-- Import auto-selects a channel, so gating the summary on an empty selection would
+			     leave it unreachable after a normal import. -->
+			<ImportSummary />
 		{/if}
 	</div>
 
 	<div
-		class="main-tab-panel panel-padding"
+		class="tab-body"
 		role="tabpanel"
-		id="main-panel-mixer-overview"
-		aria-labelledby="main-tab-mixer-overview"
-		hidden={uiState.mainView !== 'mixer-overview'}
+		id="panel-mixer"
+		aria-labelledby="tab-mixer"
+		hidden={uiState.mainView !== 'mixer'}
 	>
-		<EmptyState message="Mixer Overview arrives in phase 10." />
+		<EmptyState message="The mixer appears once a project has channels." />
 	</div>
 </main>
 
 <style>
 	.main-panel {
 		display: flex;
-		min-height: 0;
 		flex-direction: column;
-		overflow: hidden;
+		min-height: 0;
+		overflow-y: auto;
 		background: var(--color-background);
 	}
 
@@ -175,12 +107,6 @@
 		flex: 0 0 auto;
 		border-bottom: var(--border-width) solid var(--color-border);
 		background: var(--color-surface);
-	}
-
-	.channel-tabs {
-		padding-left: var(--space-3);
-		border-top: var(--border-width) solid var(--color-border);
-		background: var(--color-background);
 	}
 
 	.tab {
@@ -195,11 +121,6 @@
 		transition: background-color 100ms;
 	}
 
-	.tab.compact {
-		height: 26px;
-		font-size: var(--font-size-sm);
-	}
-
 	.tab:hover {
 		background: var(--color-surface-active);
 	}
@@ -211,27 +132,14 @@
 		font-weight: 600;
 	}
 
-	.main-tab-panel {
-		min-height: 0;
+	.tab-body {
 		flex: 1;
+		min-height: 0;
+		padding: var(--space-3);
 		overflow-y: auto;
 	}
 
-	.main-tab-panel[hidden],
-	.channel-tab-panel[hidden] {
+	.tab-body[hidden] {
 		display: none;
-	}
-
-	.header-padding,
-	.panel-padding {
-		padding: var(--space-3);
-	}
-
-	.header-padding {
-		padding-bottom: 0;
-	}
-
-	.channel-tab-panel {
-		min-height: 0;
 	}
 </style>

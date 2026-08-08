@@ -10,12 +10,11 @@ beforeEach(() => {
 });
 
 describe('uiState defaults', () => {
-	it('select the Channel Editor instrument tab without persisted dialog or channel state', async () => {
+	it('are selectedChannelId=null, mainView=instrument, openDialog=null', async () => {
 		const { uiState } = await loadUiState();
 
 		expect(uiState.selectedChannelId).toBeNull();
-		expect(uiState.mainView).toBe('channel-editor');
-		expect(uiState.channelTab).toBe('instrument');
+		expect(uiState.mainView).toBe('instrument');
 		expect(uiState.openDialog).toBeNull();
 	});
 });
@@ -25,12 +24,10 @@ describe('uiState setters', () => {
 		const { uiState } = await loadUiState();
 
 		uiState.setSelectedChannelId('channel-1');
-		uiState.setMainView('mixer-overview');
-		uiState.setChannelTab('mixer');
+		uiState.setMainView('mixer');
 		uiState.setOpenDialog('confirm-delete');
 		expect(uiState.selectedChannelId).toBe('channel-1');
-		expect(uiState.mainView).toBe('mixer-overview');
-		expect(uiState.channelTab).toBe('mixer');
+		expect(uiState.mainView).toBe('mixer');
 		expect(uiState.openDialog).toBe('confirm-delete');
 
 		uiState.setSelectedChannelId(null);
