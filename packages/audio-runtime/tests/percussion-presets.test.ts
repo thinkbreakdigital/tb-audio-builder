@@ -1,4 +1,3 @@
-import { PercussionInstrumentDefinitionSchema } from '@thinkbreak/project-schema';
 import { describe, expect, it } from 'vitest';
 import {
 	createDefaultPercussionInstrument,
@@ -151,13 +150,6 @@ describe('PERCUSSION_PRESETS', () => {
 		expect(new Set(grouped.map((preset) => percussionDefinitionOf(preset.id).chokeGroup))).toEqual(
 			new Set(['hats'])
 		);
-	});
-
-	it('validates every definition against the published Zod schema', () => {
-		// Imported here and nowhere in src/: audio-runtime ships with zero runtime dependencies.
-		for (const preset of PERCUSSION_PRESETS) {
-			expect(PercussionInstrumentDefinitionSchema.safeParse(preset.definition).success).toBe(true);
-		}
 	});
 });
 

@@ -1,21 +1,26 @@
-import { Midi } from '@tonejs/midi';
+import MidiPackage from '@tonejs/midi';
+import type { Midi as MidiFile } from '@tonejs/midi';
 import type { CompiledSong } from '@thinkbreak/audio-runtime';
 import { CompiledSongSchema, parseOrThrow } from '@thinkbreak/project-schema';
-import { MAX_MIDI_FILE_BYTES } from './constants';
-import { MidiImportError } from './errors';
+import { MAX_MIDI_FILE_BYTES } from './constants.js';
+import { MidiImportError } from './errors.js';
 import {
 	ignoredEventMessage,
 	classifyScannedEvent,
 	isSilentlyIgnoredEventType
-} from './supported-events';
+} from './supported-events.js';
 import {
 	MidiWarningCollector,
 	normalizeMidi,
 	type MidiImportWarning,
 	type TrackRoleSuggestion
-} from './normalize-midi';
-import { scanMidiEvents, type ScannedEvent, type ScannedMidiFile } from './scan-midi-events';
-import { suggestRoleForTrackName } from './suggest-role';
+} from './normalize-midi.js';
+import { scanMidiEvents, type ScannedEvent, type ScannedMidiFile } from './scan-midi-events.js';
+import { suggestRoleForTrackName } from './suggest-role.js';
+
+// @tonejs/midi@2 publishes CommonJS through its `main` field. Bundlers synthesize named exports,
+// but native Node ESM exposes that CommonJS namespace only as the default export.
+const { Midi } = MidiPackage;
 
 export interface MidiCompileResult {
 	song: CompiledSong;
@@ -24,7 +29,7 @@ export interface MidiCompileResult {
 }
 
 interface ParsedMidiInput {
-	midi: Midi;
+	midi: MidiFile;
 	scannedMidiFile: ScannedMidiFile | undefined;
 }
 
@@ -54,7 +59,7 @@ function parseMidiFile(fileBytes: ArrayBuffer, filename: string): ParsedMidiInpu
 		throw new MidiImportError(filename, 'is not a Standard MIDI File.');
 	}
 
-	let midi: Midi;
+	let midi: MidiFile;
 	try {
 		midi = new Midi(fileBytes);
 	} catch (cause) {
@@ -103,7 +108,7 @@ function addScannedEventWarnings(input: {
 }
 
 function attributeScannedEvents(
-	midi: Midi,
+	midi: MidiFile,
 	scannedMidiFile: ScannedMidiFile | undefined
 ): ScannedEventAttribution {
 	const eventsByParsedTrack = midi.tracks.map((): ScannedEvent[] => []);

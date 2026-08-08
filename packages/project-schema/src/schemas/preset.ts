@@ -5,9 +5,9 @@ import type {
 	InstrumentDefinition
 } from '@thinkbreak/audio-runtime';
 import { z } from 'zod';
-import { AudioChannelDefinitionSchema } from './channel';
-import { InstrumentDefinitionSchema } from './instrument';
-import { MasterSettingsSchema } from './project';
+import { AudioChannelDefinitionSchema } from './channel.js';
+import { InstrumentDefinitionSchema } from './instrument.js';
+import { MasterSettingsSchema } from './project.js';
 
 export interface InstrumentPreset {
 	id: string;

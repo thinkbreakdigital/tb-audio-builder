@@ -1,8 +1,8 @@
 import type { BuilderProject } from '@thinkbreak/audio-runtime';
-import { ProjectValidationError } from '../errors';
-import { parseOrThrow } from '../parse';
-import { BuilderProjectSchema } from '../schemas';
-import { PROJECT_MIGRATIONS, runMigrationPipeline } from './registry';
+import { ProjectValidationError } from '../errors.js';
+import { parseOrThrow } from '../parse.js';
+import { BuilderProjectSchema } from '../schemas/index.js';
+import { PROJECT_MIGRATIONS, runMigrationPipeline } from './registry.js';
 
 export function migrateProjectDocument(document: unknown, context: string): BuilderProject {
 	const migrated = runMigrationPipeline(document, context, 1, PROJECT_MIGRATIONS);

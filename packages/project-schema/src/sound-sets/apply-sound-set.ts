@@ -1,6 +1,6 @@
 import type { AudioChannelDefinition, BuilderProject } from '@thinkbreak/audio-runtime';
-import type { SoundSet } from '../schemas';
-import { pairByNameThenPosition } from './pair-by-name-then-position';
+import type { SoundSet } from '../schemas/index.js';
+import { pairByNameThenPosition } from './pair-by-name-then-position.js';
 
 export interface SoundSetApplyPlan {
 	assignments: { channelId: string; channelName: string; fromSoundSetChannel: string }[];

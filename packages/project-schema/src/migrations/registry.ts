@@ -1,4 +1,4 @@
-import { MigrationError } from '../errors';
+import { MigrationError } from '../errors.js';
 
 export interface ProjectMigration {
 	readonly fromVersion: number;

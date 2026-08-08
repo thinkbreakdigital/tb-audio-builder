@@ -4,7 +4,7 @@ import type {
 	CompiledTrack,
 	InstrumentDefinition
 } from '@thinkbreak/audio-runtime';
-import { AudioChannelDefinitionSchema } from '../schemas';
+import { AudioChannelDefinitionSchema } from '../schemas/index.js';
 
 export interface CreateChannelForTrackInput {
 	track: Pick<CompiledTrack, 'id' | 'sourceTrackName'>;

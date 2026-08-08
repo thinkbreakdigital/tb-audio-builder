@@ -1,3 +1,3 @@
-export * from './apply-sound-set';
-export * from './create-sound-set';
-export * from './pair-by-name-then-position';
+export * from './apply-sound-set.js';
+export * from './create-sound-set.js';
+export * from './pair-by-name-then-position.js';

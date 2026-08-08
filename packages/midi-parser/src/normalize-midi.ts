@@ -12,8 +12,8 @@ import type {
 	TimeSignatureChange,
 	TrackVolumeEvent
 } from '@thinkbreak/audio-runtime';
-import { MAX_MIDI_IMPORT_WARNINGS } from './constants';
-import type { ScannedEvent } from './scan-midi-events';
+import { MAX_MIDI_IMPORT_WARNINGS } from './constants.js';
+import type { ScannedEvent } from './scan-midi-events.js';
 
 export interface MidiImportWarning {
 	sourceFilename: string;

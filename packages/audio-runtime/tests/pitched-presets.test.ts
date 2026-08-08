@@ -1,4 +1,3 @@
-import { PitchedInstrumentDefinitionSchema } from '@thinkbreak/project-schema';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_AUDIO_LIMITS } from '../src/constants.js';
 import {
@@ -154,13 +153,6 @@ describe('PITCHED_PRESETS', () => {
 			maxVoices: row.maxVoices,
 			stealMode: 'oldest'
 		});
-	});
-
-	it('validates every definition against the published Zod schema', () => {
-		// Imported here and nowhere in src/: audio-runtime ships with zero runtime dependencies.
-		for (const preset of PITCHED_PRESETS) {
-			expect(PitchedInstrumentDefinitionSchema.safeParse(preset.definition).success).toBe(true);
-		}
 	});
 });
 

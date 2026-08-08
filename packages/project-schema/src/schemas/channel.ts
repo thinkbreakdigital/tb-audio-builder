@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { InstrumentDefinitionSchema } from './instrument';
+import { InstrumentDefinitionSchema } from './instrument.js';
 
 export const ChannelRoleSchema = z.enum(['pitched', 'percussion', 'ignored', 'metadata']);
 

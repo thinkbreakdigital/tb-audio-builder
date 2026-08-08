@@ -1,5 +1,5 @@
 import type { BuilderProject } from '@thinkbreak/audio-runtime';
-import { SoundSetSchema, type SoundSet } from '../schemas';
+import { SoundSetSchema, type SoundSet } from '../schemas/index.js';
 
 export function createSoundSetFromProject(input: {
 	project: BuilderProject;

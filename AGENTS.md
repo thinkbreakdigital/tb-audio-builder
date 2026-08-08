@@ -10,11 +10,11 @@ I am a solo developer. Main branch deploys to an online instance with no traffic
 nvm use && pnpm verify
 ```
 
-`pnpm verify` is the **only** gate: lockfile integrity → `build:packages` → `check` → `lint` →
-`test:unit` → `build`. CI runs it, Railway runs it as its build command, and Railway has *Wait for
-CI* enabled, so a green `verify` on the pinned Node is the whole contract. Never hand-run a subset
-of its steps and call a change verified — a passing `pnpm check && pnpm test:unit` is not a passing
-build.
+`pnpm verify` is the **only** gate: lockfile integrity → `db:check` → `build:packages` → native
+package-import smoke test → `check` → `lint` → `test:unit` → `build`. CI runs it, Railway runs it
+as its build command, and Railway has *Wait for CI* enabled, so a green `verify` on the pinned Node
+is the whole contract. Never hand-run a subset of its steps and call a change verified — a passing
+`pnpm check && pnpm test:unit` is not a passing build.
 
 If the gate needs a new step, add it to the `verify` script in the root `package.json` and nowhere
 else. Do not add steps to `.github/workflows/ci.yml` or `build:railway` directly; they delegate, and

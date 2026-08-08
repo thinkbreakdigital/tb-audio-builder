@@ -1,5 +1,5 @@
 import type { BuilderProject } from '@thinkbreak/audio-runtime';
-import { BuilderProjectSchema } from '../schemas';
+import { BuilderProjectSchema } from '../schemas/index.js';
 
 export interface CreateEmptyProjectInput {
 	name: string;

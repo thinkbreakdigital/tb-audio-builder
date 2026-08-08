@@ -114,9 +114,6 @@ importers:
 
   packages/audio-runtime:
     devDependencies:
-      '@thinkbreak/project-schema':
-        specifier: workspace:*
-        version: link:../project-schema
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
