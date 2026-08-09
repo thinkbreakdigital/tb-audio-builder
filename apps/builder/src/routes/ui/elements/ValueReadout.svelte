@@ -27,6 +27,10 @@
 		/** format: 'ticks' */
 		startTicks?: number;
 		endTicks?: number;
+		clickable?: boolean;
+		clipped?: boolean;
+		ariaLabel?: string;
+		onclick?: (event: MouseEvent) => void;
 	}
 
 	let {
@@ -40,7 +44,11 @@
 		durationSeconds = 192,
 		bpm = 124,
 		startTicks = 1920,
-		endTicks = 7680
+		endTicks = 7680,
+		clickable = false,
+		clipped = false,
+		ariaLabel,
+		onclick
 	}: Props = $props();
 
 	const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -86,7 +94,20 @@
 	});
 </script>
 
-<span class="readout format-{format}" class:large={size === 'large'}>{text}</span>
+{#if clickable}
+	<button
+		type="button"
+		class="readout boxed format-{format}"
+		class:large={size === 'large'}
+		class:clipped
+		aria-label={ariaLabel ?? text}
+		{onclick}
+	>
+		{text}{#if clipped}<span aria-hidden="true"> !</span>{/if}
+	</button>
+{:else}
+	<span class="readout format-{format}" class:large={size === 'large'}>{text}</span>
+{/if}
 
 <style>
 	.readout {
@@ -104,6 +125,28 @@
 	.readout.large {
 		font-size: var(--font-size-lg);
 		font-weight: 700;
+	}
+
+	.boxed {
+		padding: 0 var(--space-1);
+		border: var(--border-width) solid var(--color-border);
+		border-radius: var(--radius);
+		background: var(--color-surface);
+		cursor: pointer;
+	}
+
+	.boxed:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
+	}
+
+	.boxed.clipped {
+		border-color: var(--color-danger);
+		background: var(--color-danger);
+		color: var(--color-accent-text);
+		font-weight: 700;
+		text-decoration: underline;
+		text-underline-offset: 2px;
 	}
 
 	/* Per-format min-width: reserves space for the longest realistic string in that format, so the

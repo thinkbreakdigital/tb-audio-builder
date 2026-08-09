@@ -37,6 +37,8 @@
 	--radius: 3px;
 	--control-height: 28px;
 	--border-width: 1px;
+	--mixer-strip-height: 384px;
+	--mixer-level-rail-height: 144px;
 
 	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

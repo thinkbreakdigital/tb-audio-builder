@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
-	 * Design specimen — horizontal transport seek bar. The one place in the app a horizontal
-	 * <input type="range"> is allowed (conventions §5.2); everything continuous elsewhere is a
-	 * rotary pot or the vertical Volume fader.
+	 * Design specimen — horizontal transport seek bar. This broad native range is distinct from the
+	 * compact horizontal LinearPot used for Channel Pan; every other continuous control is a rotary
+	 * pot or the vertical Volume fader.
 	 *
 	 * Self-contained: local state only, no project/audio/persistence writes.
 	 */

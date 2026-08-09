@@ -44,6 +44,7 @@
 		decimals?: number;
 		defaultValue?: number;
 		scale?: Scale;
+		size?: 'normal' | 'compact';
 	}
 
 	let {
@@ -56,7 +57,8 @@
 		unit = 'Hz',
 		decimals = 0,
 		defaultValue = 1000,
-		scale = 'log'
+		scale = 'log',
+		size = 'normal'
 	}: Props = $props();
 
 	const uid = $props.id();
@@ -139,7 +141,7 @@
 	}
 </script>
 
-<div class="pot">
+<div class="pot" class:compact={size === 'compact'}>
 	<label for={rangeId}>{label}</label>
 
 	<div class="dial">
@@ -213,6 +215,10 @@
 		color: var(--color-text);
 	}
 
+	.pot.compact {
+		min-width: 62px;
+	}
+
 	label {
 		color: var(--color-text-muted);
 		text-align: center;
@@ -267,6 +273,15 @@
 		position: relative;
 		width: 56px;
 		height: 56px;
+	}
+
+	.compact .dial {
+		width: 40px;
+		height: 40px;
+	}
+
+	.compact .indicator {
+		height: 14px;
 	}
 
 	.range-input {

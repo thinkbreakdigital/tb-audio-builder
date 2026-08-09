@@ -112,7 +112,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: ['Song position seek'],
 				source: '10B §4.1',
 				guidance:
-					'Horizontal native range that stretches across the transport bar — the one place a horizontal slider is allowed. Needs a visible label, a wide hit target, and a disabled look for the no-song state that does not read as broken.',
+					'Horizontal native range that stretches across the transport bar. It is the broad transport variant; Channel Pan uses the same LinearPot primitive in compact horizontal orientation. Needs a visible label, a wide hit target, and a disabled look for the no-song state that does not read as broken.',
 				variants: [
 					'Scrubbing holds a local draft so poller updates cannot fight the thumb; the thumb must not jump mid-drag.'
 				]
@@ -163,7 +163,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: ['Loop enabled'],
 				source: '09B §4.4 · 10B §4.2',
 				guidance:
-					'Labelled native checkbox, reused as delivered. The design question is what an off section looks like: disabled controls stay visible and readable so nothing jumps, which means a dimmed-but-legible treatment rather than hiding.',
+					'Labelled native checkbox with a compact rectangular selector. Off holds the selector at the grey left stop; on slides it right in the reference selector blue. Disabled sections stay visible and readable so nothing jumps, which means a dimmed-but-legible treatment rather than hiding.',
 				variants: [
 					'Tracking toggles carry required help text underneath — off: fixed single-hit sound; on: pitch follows incoming MIDI relative to the root note.'
 				]
@@ -184,7 +184,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '09B §4.4',
 				guidance:
-					'Native select, reused as delivered. Recommendation: keep these as selects rather than adding a second segmented family — SegmentSwitch is reserved for bank selection and Mono/Poly.'
+					'Compact native select, styled for the one- or two-character SVG/glyph labels used by most callers. Keep the option labels and accessible name intact; SegmentSwitch stays reserved for bank selection and Mono/Poly.'
 			},
 			{
 				slug: 'latching-switch',
@@ -195,7 +195,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '10B §4.3 · conventions §5',
 				guidance:
-					'Text toggle carrying aria-pressed. The engaged state must read without color — weight, fill, and border all change, and the word MUTE or SOLO stays legible in grayscale. Sized to sit two-across in a compact strip.'
+					'Square S and M buttons carrying aria-pressed. Solo engages yellow and mute red; both states also change weight, fill, and border so they remain clear in grayscale. Sized to sit two-across in a compact strip.'
 			},
 			{
 				slug: 'text-entry',
@@ -241,17 +241,6 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				source: '09B §4.6',
 				guidance:
 					'Small square glyph button flanking the patch name. Arrows carry full accessible names plus hover and focus help — an unlabelled arrow is not acceptable on its own.'
-			},
-			{
-				slug: 'audition-pad',
-				name: 'AuditionPad',
-				file: 'features/instruments/InstrumentPanel.svelte',
-				instrument: ['Press-and-hold preview — pitched MIDI 60, percussion 36'],
-				mixer: [],
-				transport: [],
-				source: '09B §4.7',
-				guidance:
-					'A press-and-hold pad, larger than a normal button, with a held state distinct from hover and focus so it is obvious the sound is sustaining. Keyboard hold must look identical to pointer hold.'
 			}
 		]
 	},
@@ -304,11 +293,13 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				name: 'ChannelStrip',
 				file: 'features/mixer/ChannelStrip.svelte',
 				instrument: [],
-				mixer: ['Order: name and type, volume fader, pan pot, MUTE / SOLO, meter, signal status'],
+				mixer: [
+					'Order: name and type, volume fader, compact horizontal Pan LinearPot, MUTE / SOLO, meter'
+				],
 				transport: [],
 				source: '10B §4.3',
 				guidance:
-					'The core density decision: one compact column holding six things, repeated up to sixteen times. Never exposes role, reset, waveform, envelope, filter, or preset controls. Fix the column width here and everything else follows.',
+					'The core density decision: one compact column holding six things, repeated up to sixteen times. Channel and Master share one fixed strip height so Master can remain pinned beside the rail. A clickable current-volume dB readout sits above the fader/meter rail and resets a latched clip; it turns red plus gains an explicit marker when clipped. Never exposes role, reset, waveform, envelope, filter, or preset controls. Fix the column width here and everything else follows.',
 				variants: [
 					'The channel name is itself the navigation control — clicking it selects the channel and opens Instrument, so it needs an interactive affordance while still reading as a title.'
 				]
@@ -320,14 +311,14 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				instrument: [],
 				mixer: [
 					'Master volume',
-					'Compressor enabled + threshold / knee / ratio / attack / release',
-					'Meter',
-					'Clip reset'
+					'Compressor enabled (parameters live in the dedicated Compressor pane)',
+					'Meter + dB milestones',
+					'Clickable current-volume dB readout / clip reset'
 				],
 				transport: [],
 				source: '10B §4.5',
 				guidance:
-					'A wider strip carrying six pots more than a channel strip, pinned or clearly separated so scrolling channels never slide under it. Disabled compressor values stay visible and readable.'
+					'A wider strip with the same fixed height as a channel strip, pinned or clearly separated so scrolling channels never slide under it. Its clickable current-volume dB readout resets a latched clip; no separate Reset clip button. The strip only carries the Compressor enabled toggle; threshold, knee, ratio, attack, and release live in the dedicated Compressor pane.'
 			},
 			{
 				slug: 'strip-rail',
@@ -413,21 +404,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '10B §4.4 · conventions §6',
 				guidance:
-					'One flat bordered bar with a single fill. No gradient, canvas, segments, or peak animation. Supplemental and aria-hidden — the strip must be fully readable with the meter ignored, so this is the one element allowed to be purely decorative in the accessibility tree.'
-			},
-			{
-				slug: 'signal-status',
-				name: 'SignalStatus',
-				file: 'features/mixer/ChannelStrip.svelte',
-				instrument: [],
-				mixer: ['Audible / Muted / Silenced by solo / Not included', 'Latched CLIP + reset'],
-				transport: [],
-				source: '10B §4.3–4.4 · conventions §6',
-				guidance:
-					'The text line under the meter that carries the real state. Must be understandable in grayscale with meters ignored, and must fit four different phrases without changing the strip height.',
-				variants: [
-					'Clip is latched text plus a small reset action in the same line — never a colored square.'
-				]
+					'One flat bordered bar with solid stacked zones. No gradient, canvas, or peak animation. Green remains below −12 dB; only the portion above −12 dB is yellow, and only the portion above 0 dB is red. Channel and Master meters show 0, −6, −12, −24, and −48 dB milestones beside the rail. Supplemental and aria-hidden — the strip must be fully readable with the meter ignored, so this is the one element allowed to be purely decorative in the accessibility tree.'
 			},
 			{
 				slug: 'value-readout',

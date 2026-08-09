@@ -1,15 +1,34 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
 	import { UI_ELEMENT_CATALOG } from './catalog.js';
+	import AdvancedDrawer from './elements/AdvancedDrawer.svelte';
+	import ChannelStrip from './elements/ChannelStrip.svelte';
+	import ControlSection from './elements/ControlSection.svelte';
+	import Dialog from './elements/Dialog.svelte';
 	import DualRotaryPot from './elements/DualRotaryPot.svelte';
+	import EmptyState from './elements/EmptyState.svelte';
+	import EngineStatus from './elements/EngineStatus.svelte';
 	import FieldText from './elements/FieldText.svelte';
 	import LevelMeter from './elements/LevelMeter.svelte';
 	import LinearPot from './elements/LinearPot.svelte';
 	import RotaryPot from './elements/RotaryPot.svelte';
 	import ScrubSlider from './elements/ScrubSlider.svelte';
 	import SegmentSwitch from './elements/SegmentSwitch.svelte';
-	import SignalStatus from './elements/SignalStatus.svelte';
+	import LatchingSwitch from './elements/LatchingSwitch.svelte';
+	import MasterStrip from './elements/MasterStrip.svelte';
+	import MomentaryButton from './elements/MomentaryButton.svelte';
+	import PatchBrowser from './elements/PatchBrowser.svelte';
+	import PatchHeader from './elements/PatchHeader.svelte';
+	import SelectorSwitch from './elements/SelectorSwitch.svelte';
+	import SoundSetPanel from './elements/SoundSetPanel.svelte';
+	import StatusRegion from './elements/StatusRegion.svelte';
+	import StepButton from './elements/StepButton.svelte';
+	import StripRail from './elements/StripRail.svelte';
+	import TextEntry from './elements/TextEntry.svelte';
+	import ToggleSwitch from './elements/ToggleSwitch.svelte';
+	import UnassignedList from './elements/UnassignedList.svelte';
 	import ValueReadout from './elements/ValueReadout.svelte';
+	import ViewSelector from './elements/ViewSelector.svelte';
 
 	// Slots stay empty until a specimen exists for that row; the box is the design placeholder.
 	const SPECIMENS: Record<string, Component> = {
@@ -18,10 +37,29 @@
 		'linear-pot': LinearPot,
 		'scrub-slider': ScrubSlider,
 		'segment-switch': SegmentSwitch,
+		'toggle-switch': ToggleSwitch,
+		'selector-switch': SelectorSwitch,
+		'latching-switch': LatchingSwitch,
+		'text-entry': TextEntry,
+		'momentary-button': MomentaryButton,
+		'step-button': StepButton,
+		'control-section': ControlSection,
+		'view-selector': ViewSelector,
+		'patch-header': PatchHeader,
+		'channel-strip': ChannelStrip,
+		'master-strip': MasterStrip,
+		'strip-rail': StripRail,
+		'unassigned-list': UnassignedList,
+		'advanced-drawer': AdvancedDrawer,
+		dialog: Dialog,
+		'patch-browser': PatchBrowser,
+		'sound-set-panel': SoundSetPanel,
 		'level-meter': LevelMeter,
-		'signal-status': SignalStatus,
 		'value-readout': ValueReadout,
-		'field-text': FieldText
+		'field-text': FieldText,
+		'engine-status': EngineStatus,
+		'status-region': StatusRegion,
+		'empty-state': EmptyState
 	};
 </script>
 

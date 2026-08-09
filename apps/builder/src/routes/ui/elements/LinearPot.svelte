@@ -38,17 +38,27 @@
 		fineStep?: number;
 		defaultValue?: number;
 		decimals?: number;
+		orientation?: 'vertical' | 'horizontal';
+		shaftHeight?: string;
+		showLabel?: boolean;
+		showReadout?: boolean;
+		density?: 'normal' | 'compact';
 	}
 
 	let {
 		label = 'Volume',
-		value = 0.8,
+		value = $bindable(0.8),
 		min = 0,
 		max = 1,
 		step = 0.01,
 		fineStep = 0.001,
 		defaultValue = 0.8,
-		decimals = 2
+		decimals = 2,
+		orientation = 'vertical',
+		shaftHeight = '72px',
+		showLabel = true,
+		showReadout = true,
+		density = 'normal'
 	}: Props = $props();
 
 	const uid = $props.id();
@@ -56,17 +66,14 @@
 	const numberId = `${uid}-number`;
 	const errorId = `${uid}-error`;
 
-	// Seeded from the prop's initial value on purpose: the specimen is uncontrolled once mounted.
-	// svelte-ignore state_referenced_locally
-	let committed = $state(clamp(value, min, max));
 	let fieldOpen = $state(false);
 	// Writable $derived: recomputes from committed whenever that changes (drag, keys, reset), but
 	// free typing can reassign it in between recomputes without fighting the derivation.
-	let draft = $derived(formatValue(committed, decimals));
+	let draft = $derived(formatValue(value, decimals));
 	let error = $state('');
 
 	function commit(next: number) {
-		committed = clamp(next, min, max);
+		value = clamp(next, min, max);
 		error = '';
 	}
 
@@ -79,11 +86,11 @@
 	}
 
 	function onRangeKeydown(event: KeyboardEvent) {
-		handleRangeKeydown(event, committed, min, max, fineStep, commit);
+		handleRangeKeydown(event, value, min, max, fineStep, commit);
 	}
 
 	function onPointerDown(event: PointerEvent) {
-		startDrag(event, committed, min, max, step, fineStep, commit);
+		startDrag(event, value, min, max, step, fineStep, commit);
 	}
 
 	function onDoubleClick() {
@@ -95,7 +102,7 @@
 			draft,
 			min,
 			max,
-			committed,
+			value,
 			decimals,
 			(m) => (error = m),
 			(d) => (draft = d),
@@ -116,7 +123,7 @@
 				(event.currentTarget as HTMLInputElement).blur();
 			}
 		} else if (event.key === 'Escape') {
-			draft = formatValue(committed, decimals);
+			draft = formatValue(value, decimals);
 			error = '';
 			fieldOpen = false;
 			(event.currentTarget as HTMLInputElement).blur();
@@ -124,8 +131,13 @@
 	}
 </script>
 
-<div class="linear-pot">
-	<label for={rangeId} class="pot-label">{label}</label>
+<div
+	class="linear-pot"
+	class:horizontal={orientation === 'horizontal'}
+	class:compact={density === 'compact'}
+	style={`--shaft-height: ${shaftHeight};`}
+>
+	{#if showLabel}<label for={rangeId} class="pot-label">{label}</label>{/if}
 
 	<div class="fader-shaft">
 		<!--
@@ -142,44 +154,44 @@
 			{min}
 			{max}
 			{step}
-			value={committed}
+			{value}
 			oninput={onRangeInput}
 			onkeydown={onRangeKeydown}
-			onpointerdown={onPointerDown}
+			onpointerdown={orientation === 'vertical' ? onPointerDown : undefined}
 			ondblclick={onDoubleClick}
 			aria-describedby={error ? errorId : undefined}
 		/>
 	</div>
 
-	<div class="value-slot">
-		{#if fieldOpen}
-			<label for={numberId} class="visually-hidden">{label}</label>
-			<input
-				id={numberId}
-				class="field-input"
-				type="number"
-				{min}
-				{max}
-				{step}
-				value={draft}
-				use:focusAndSelect
-				oninput={(event) => (draft = (event.currentTarget as HTMLInputElement).value)}
-				onblur={handleFieldBlur}
-				onkeydown={handleFieldKeydown}
-				aria-invalid={error ? 'true' : undefined}
-				aria-describedby={error ? errorId : undefined}
-			/>
-		{:else}
-			<button
-				type="button"
-				class="value-readout"
-				onclick={openField}
-				aria-label={`Edit ${label} value`}
-			>
-				{formatValue(committed, decimals)}
-			</button>
-		{/if}
-	</div>
+	{#if showReadout}<div class="value-slot">
+			{#if fieldOpen}
+				<label for={numberId} class="visually-hidden">{label}</label>
+				<input
+					id={numberId}
+					class="field-input"
+					type="number"
+					{min}
+					{max}
+					{step}
+					value={draft}
+					use:focusAndSelect
+					oninput={(event) => (draft = (event.currentTarget as HTMLInputElement).value)}
+					onblur={handleFieldBlur}
+					onkeydown={handleFieldKeydown}
+					aria-invalid={error ? 'true' : undefined}
+					aria-describedby={error ? errorId : undefined}
+				/>
+			{:else}
+				<button
+					type="button"
+					class="value-readout"
+					onclick={openField}
+					aria-label={`Edit ${label} value`}
+				>
+					{formatValue(value, decimals)}
+				</button>
+			{/if}
+		</div>{/if}
 
 	{#if error}
 		<p id={errorId} class="error">{error}</p>
@@ -253,7 +265,7 @@
 		display: flex;
 		justify-content: center;
 		/* Specimen throw: 72px. Production channel strip uses ~140px. */
-		height: 72px;
+		height: var(--shaft-height);
 	}
 
 	.fader-input {
@@ -307,6 +319,74 @@
 		background: var(--color-accent);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
+	}
+
+	.horizontal {
+		width: 100%;
+	}
+
+	.horizontal .fader-shaft {
+		width: 96px;
+		height: 24px;
+	}
+
+	.horizontal .fader-input {
+		writing-mode: horizontal-tb;
+		direction: ltr;
+		width: 100%;
+		height: 24px;
+		cursor: ew-resize;
+	}
+
+	.horizontal .fader-input::-webkit-slider-runnable-track {
+		width: 100%;
+		height: 6px;
+	}
+
+	.horizontal .fader-input::-moz-range-track {
+		width: 100%;
+		height: 6px;
+	}
+
+	.horizontal .fader-input::-webkit-slider-thumb {
+		width: 11px;
+		height: 22px;
+		margin-top: -8px;
+	}
+
+	.horizontal .fader-input::-moz-range-thumb {
+		width: 11px;
+		height: 22px;
+	}
+
+	.horizontal.compact {
+		gap: 0;
+	}
+
+	.horizontal.compact .pot-label {
+		line-height: 1;
+	}
+
+	.horizontal.compact .fader-shaft {
+		height: 14px;
+	}
+
+	.horizontal.compact .fader-input {
+		height: 14px;
+	}
+
+	.horizontal.compact .value-slot {
+		height: 16px;
+		min-width: 0;
+	}
+
+	.horizontal.compact .fader-input::-webkit-slider-thumb {
+		height: 14px;
+		margin-top: -4px;
+	}
+
+	.horizontal.compact .fader-input::-moz-range-thumb {
+		height: 14px;
 	}
 
 	/* A readout that happens to be clickable, not a chunky button: no control-height box, no border —
