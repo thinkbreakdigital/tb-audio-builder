@@ -3,15 +3,14 @@
 	export interface Props {
 		label?: string;
 		checked?: boolean;
-		align?: 'start' | 'center';
 	}
 
 	const uid = $props.id();
 	const inputId = `${uid}-toggle`;
-	let { label = 'Filter', checked = $bindable(false), align = 'start' }: Props = $props();
+	let { label = 'Filter', checked = $bindable(false) }: Props = $props();
 </script>
 
-<label class="toggle-switch" class:centered={align === 'center'} for={inputId}>
+<label class="toggle-switch" for={inputId}>
 	<span class="label">{label}</span>
 	<span class="control">
 		<input id={inputId} type="checkbox" bind:checked />
@@ -24,15 +23,11 @@
 	.toggle-switch {
 		display: inline-flex;
 		flex-direction: column;
-		align-items: flex-start;
+		align-items: center;
 		gap: var(--space-1);
 		color: var(--color-text);
 		font-size: var(--font-size-sm);
 		cursor: pointer;
-	}
-
-	.toggle-switch.centered {
-		align-items: center;
 	}
 
 	.control {

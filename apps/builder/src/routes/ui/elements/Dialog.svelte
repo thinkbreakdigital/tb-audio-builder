@@ -1,20 +1,18 @@
 <script lang="ts">
-	let open = $state(false);
 	let dialogEl = $state<HTMLDialogElement>();
 	let triggerEl = $state<HTMLButtonElement>();
 
 	function showDialog() {
 		triggerEl?.focus();
 		dialogEl?.showModal();
-		open = true;
 	}
 
 	function closeDialog() {
 		dialogEl?.close();
 	}
 
+	// Native <dialog> owns open/closed state; this only restores focus to the trigger on close.
 	function handleClose() {
-		open = false;
 		triggerEl?.focus();
 	}
 </script>

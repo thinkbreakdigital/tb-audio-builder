@@ -5,9 +5,6 @@
 	import ValueReadout from './ValueReadout.svelte';
 
 	/** Static master-region specimen; compressor controls remain visible when bypassed. */
-	const uid = $props.id();
-	const volumeId = `${uid}-volume`;
-	const compressorId = `${uid}-compressor`;
 	let compressorEnabled = $state(false);
 	let masterVolumeDb = $state(-3);
 	let clipLatched = $state(false);
@@ -52,7 +49,7 @@
 			<LevelMeter levelDb={masterVolumeDb} height="100%" showScale />
 		</div>
 	</div>
-	<ToggleSwitch label="Compressor" align="center" bind:checked={compressorEnabled} />
+	<ToggleSwitch label="Compressor" bind:checked={compressorEnabled} />
 </section>
 
 <style>

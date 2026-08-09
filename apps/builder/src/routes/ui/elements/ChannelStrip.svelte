@@ -5,8 +5,6 @@
 	import ValueReadout from './ValueReadout.svelte';
 
 	/** Static compact mixer-strip specimen. The latches are deliberately local to the catalog. */
-	const uid = $props.id();
-	const volumeId = `${uid}-volume`;
 	let muted = $state(false);
 	let soloed = $state(false);
 	let volumeDb = $state(-6);

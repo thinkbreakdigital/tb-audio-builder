@@ -9,6 +9,7 @@
 	import EmptyState from './elements/EmptyState.svelte';
 	import EngineStatus from './elements/EngineStatus.svelte';
 	import FieldText from './elements/FieldText.svelte';
+	import InstrumentChannelMockup from './elements/InstrumentChannelMockup.svelte';
 	import LevelMeter from './elements/LevelMeter.svelte';
 	import LinearPot from './elements/LinearPot.svelte';
 	import RotaryPot from './elements/RotaryPot.svelte';
@@ -148,6 +149,14 @@
 			</tbody>
 		{/each}
 	</table>
+
+	<section class="instrument-preview" aria-labelledby="instrument-preview-title">
+		<div class="preview-heading">
+			<p>Composed view</p>
+			<h1 id="instrument-preview-title">Instrument pane mockup</h1>
+		</div>
+		<InstrumentChannelMockup />
+	</section>
 </div>
 
 <style>
@@ -262,5 +271,25 @@
 		margin: var(--space-2) 0 var(--space-1);
 		color: var(--color-text-muted);
 		font-weight: 700;
+	}
+
+	.instrument-preview {
+		min-width: 1200px;
+		padding: var(--space-6) var(--space-4);
+		border-top: var(--border-width) solid var(--color-border-strong);
+	}
+
+	.preview-heading {
+		margin-bottom: var(--space-3);
+	}
+	.preview-heading p {
+		margin: 0 0 var(--space-1);
+		color: var(--color-text-muted);
+		font-family: var(--font-mono);
+		font-size: var(--font-size-sm);
+	}
+	.preview-heading h1 {
+		margin: 0;
+		font-size: var(--font-size-lg);
 	}
 </style>
