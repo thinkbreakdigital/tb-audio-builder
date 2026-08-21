@@ -277,7 +277,8 @@
 
 	.instrument-preview {
 		min-width: calc(
-			var(--mod-7) + var(--mod-7) + var(--mod-7) + var(--mod-7) + var(--mod-7) + var(--mod-2)
+			var(--mod-8) + var(--mod-5) + var(--mod-7) * 2 + var(--mod-5) + var(--space-4) +
+				var(--border-width) * 2
 		);
 		padding: var(--space-6) var(--space-4);
 		border-top: var(--border-width) solid var(--color-border-strong);

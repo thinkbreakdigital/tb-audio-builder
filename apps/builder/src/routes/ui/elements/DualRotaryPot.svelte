@@ -18,6 +18,7 @@
 	 * paired concentrically) — a log ring steps in cents, not Hz, for the same reason as RotaryPot.
 	 * See pot-interaction.ts for the shared cents maths.
 	 */
+	import DualPotLabelIcon from './icons/DualPotLabelIcon.svelte';
 	import {
 		angleFor,
 		clamp,
@@ -56,6 +57,7 @@
 		innerDecimals?: number;
 		innerDefaultValue?: number;
 		innerScale?: Scale;
+		disabled?: boolean;
 	}
 
 	let {
@@ -80,7 +82,8 @@
 		innerUnit = 'Q',
 		innerDecimals = 1,
 		innerDefaultValue = 0.7,
-		innerScale = 'linear'
+		innerScale = 'linear',
+		disabled = false
 	}: Props = $props();
 
 	// Guards the case where a caller overrides the full label but passes an empty short label:
@@ -134,10 +137,12 @@
 	}
 
 	function openOuterField() {
+		if (disabled) return;
 		outerFieldOpen = true;
 	}
 
 	function openInnerField() {
+		if (disabled) return;
 		innerFieldOpen = true;
 	}
 
@@ -158,6 +163,7 @@
 	}
 
 	function handleOuterPointerDown(event: PointerEvent) {
+		if (disabled) return;
 		if (outerScale === 'log') {
 			startLogDrag(event, outerValue, outerMin, outerMax, commitOuter);
 		} else {
@@ -166,6 +172,7 @@
 	}
 
 	function handleInnerPointerDown(event: PointerEvent) {
+		if (disabled) return;
 		if (innerScale === 'log') {
 			startLogDrag(event, innerValue, innerMin, innerMax, commitInner);
 		} else {
@@ -174,10 +181,12 @@
 	}
 
 	function handleOuterDoubleClick() {
+		if (disabled) return;
 		commitOuter(outerDefaultValue);
 	}
 
 	function handleInnerDoubleClick() {
+		if (disabled) return;
 		commitInner(innerDefaultValue);
 	}
 
@@ -248,7 +257,7 @@
 	}
 </script>
 
-<div class="pot">
+<div class="pot" class:disabled>
 	<p class="pair-heading">
 		<!-- Visible text is the compact initial; aria-label carries the full name as the range's
 		     accessible name (09B §4.3), and title gives sighted mouse users the same on hover. -->
@@ -256,29 +265,7 @@
 			{outerHeadingText}
 		</label>
 
-		<!--
-			One glyph, not two. The semicircle is the outer ring and the dot is the inner disc; each
-			has its own lead line running out to the name it drives, so which control is which is
-			read off the connection rather than guessed. The arc is deliberately open on the right so
-			the inner disc's lead line can exit through the gap.
-		-->
-		<svg class="glyph" width="16" height="12" viewBox="0 0 16 12" aria-hidden="true">
-			<!-- Outer ring: semicircle open to the right, lead line out to the left-hand name. -->
-			<path
-				d="M9.5 1 A5 5 0 0 0 9.5 11"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="1.4"
-				stroke-linecap="round"
-			/>
-			<path d="M4.5 6 H0.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-			<!-- Inner disc: dot at the centre, lead line out through the open side to the right.
-			     Both leads are 4 units: the left runs 4.5 to 0.5, the right 11.5 to 15.5, each
-			     ending 0.5 from its edge. Keep them equal if this is ever resized — an asymmetric
-			     pair reads as one parameter being subordinate to the other. -->
-			<circle cx="9.5" cy="6" r="1.9" fill="currentColor" />
-			<path d="M11.5 6 H15.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-		</svg>
+		<span class="glyph"><DualPotLabelIcon /></span>
 
 		<label for={innerRangeId} class="name-label" aria-label={innerLabel} title={innerLabel}>
 			{innerHeadingText}
@@ -293,6 +280,7 @@
 			min={outerMin}
 			max={outerMax}
 			step={outerStep}
+			{disabled}
 			value={String(outerValue)}
 			oninput={(event) => commitOuter(Number((event.currentTarget as HTMLInputElement).value))}
 			onkeydown={handleOuterKeydown}
@@ -309,6 +297,7 @@
 			min={innerMin}
 			max={innerMax}
 			step={innerStep}
+			{disabled}
 			value={String(innerValue)}
 			oninput={(event) => commitInner(Number((event.currentTarget as HTMLInputElement).value))}
 			onkeydown={handleInnerKeydown}
@@ -345,6 +334,7 @@
 					min={outerMin}
 					max={outerMax}
 					step={outerStep}
+					{disabled}
 					value={outerDraft}
 					use:focusAndSelect
 					oninput={(event) => (outerDraft = (event.currentTarget as HTMLInputElement).value)}
@@ -357,6 +347,7 @@
 				<button
 					type="button"
 					class="value-readout"
+					{disabled}
 					onclick={openOuterField}
 					aria-label={`Edit ${outerLabel} value`}
 				>
@@ -375,6 +366,7 @@
 					min={innerMin}
 					max={innerMax}
 					step={innerStep}
+					{disabled}
 					value={innerDraft}
 					use:focusAndSelect
 					oninput={(event) => (innerDraft = (event.currentTarget as HTMLInputElement).value)}
@@ -387,6 +379,7 @@
 				<button
 					type="button"
 					class="value-readout"
+					{disabled}
 					onclick={openInnerField}
 					aria-label={`Edit ${innerLabel} value`}
 				>
@@ -421,6 +414,15 @@
 		font-family: var(--font-sans);
 		font-size: var(--font-size-sm);
 		color: var(--color-text);
+	}
+
+	.pot.disabled {
+		opacity: 0.55;
+	}
+
+	.disabled .range-input,
+	.disabled .value-readout {
+		cursor: not-allowed;
 	}
 
 	.pair-heading {

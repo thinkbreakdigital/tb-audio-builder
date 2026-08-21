@@ -1,10 +1,15 @@
 <script lang="ts">
 	/** Static patch-navigation specimen for the /ui catalog. */
+	interface Props {
+		embedded?: boolean;
+	}
+
+	let { embedded = false }: Props = $props();
 	let modified = $state(true);
 	let patchName = $state('Vintage Electric Piano With a Deliberately Long Patch Name');
 </script>
 
-<section class="patch-header" aria-label="Patch controls">
+<section class="patch-header" class:embedded aria-label="Patch controls">
 	<div class="patch-navigation">
 		<button type="button" aria-label="Previous patch" title="Previous patch">‹</button>
 		<div class="patch-title" title={patchName}>
@@ -21,13 +26,21 @@
 
 <style>
 	.patch-header {
-		display: grid;
+		box-sizing: border-box;
+		display: flex;
+		align-items: center;
 		gap: var(--space-2);
 		width: min(100%, var(--mod-12));
+		min-width: 0;
 		padding: var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-surface);
+	}
+
+	.patch-header.embedded {
+		flex: 1 1 auto;
+		width: 100%;
 	}
 
 	.patch-navigation,
@@ -36,6 +49,14 @@
 		align-items: center;
 		gap: var(--space-1);
 		min-width: 0;
+	}
+
+	.patch-navigation {
+		flex: 1 1 auto;
+	}
+
+	.actions {
+		flex: 0 0 auto;
 	}
 
 	.patch-title {
@@ -48,6 +69,8 @@
 	}
 
 	.name {
+		flex: 1 1 auto;
+		min-width: 0;
 		overflow: hidden;
 		font-weight: 700;
 		text-overflow: ellipsis;
@@ -64,6 +87,7 @@
 	}
 
 	button {
+		flex: 0 0 auto;
 		height: var(--control-height);
 		padding: 0 var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
@@ -71,6 +95,7 @@
 		background: var(--color-background);
 		color: var(--color-text);
 		cursor: pointer;
+		white-space: nowrap;
 		transition: background-color 100ms;
 	}
 

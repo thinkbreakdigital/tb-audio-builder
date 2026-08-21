@@ -4,7 +4,8 @@
 	 *
 	 * Modular footprint (00-conventions.md §5.4): 64x64 (--mod-2 x --band-2). Three stacked rows —
 	 * label (16), the switch band (32), and a reserved row for the enabled/disabled hint (16) — sum
-	 * to the full 64px height with zero gap between them. The switch band is itself
+	 * to the full 64px height with zero gap between them. Callers can hide the redundant hint to use
+	 * the compact 48px label-and-switch footprint. The switch band is itself
 	 * padding 8 + the 16px track + padding 8 vertically, and padding 16 + the 32px track + padding
 	 * 16 horizontally, both from the padding scale (--pad-2, --pad-3). The hint row used to float as
 	 * an absolutely positioned tooltip beside the control; it is now an ordinary in-flow row so its
@@ -14,20 +15,29 @@
 	export interface Props {
 		label?: string;
 		checked?: boolean;
+		hideHint?: boolean;
+		disabled?: boolean;
 	}
 
 	const uid = $props.id();
 	const inputId = `${uid}-toggle`;
-	let { label = 'Filter', checked = $bindable(false) }: Props = $props();
+	let {
+		label = 'Filter',
+		checked = $bindable(false),
+		hideHint = false,
+		disabled = false
+	}: Props = $props();
 </script>
 
-<label class="toggle-switch" for={inputId}>
+<label class="toggle-switch" class:hint-hidden={hideHint} class:disabled for={inputId}>
 	<span class="label">{label}</span>
 	<span class="control">
-		<input id={inputId} type="checkbox" bind:checked />
+		<input id={inputId} type="checkbox" {disabled} bind:checked />
 		<span class="track" aria-hidden="true"><span class="selector"></span></span>
 	</span>
-	<span class="state-hint" role="tooltip">{checked ? 'Enabled' : 'Disabled'}</span>
+	{#if !hideHint}
+		<span class="state-hint" role="tooltip">{checked ? 'Enabled' : 'Disabled'}</span>
+	{/if}
 </label>
 
 <style>
@@ -42,6 +52,15 @@
 		color: var(--color-text);
 		font-size: var(--font-size-sm);
 		cursor: pointer;
+	}
+
+	.toggle-switch.hint-hidden {
+		height: calc(var(--band-2) - var(--label-line));
+	}
+
+	.toggle-switch.disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
 	}
 
 	.label {

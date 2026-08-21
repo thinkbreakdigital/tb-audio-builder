@@ -65,6 +65,8 @@
 	 * not share, so a fourth position needs no extra math — `moduleWidth` below rounds the resulting
 	 * track up to the next 32px module on its own.
 	 */
+	import type { Component } from 'svelte';
+
 	export interface Segment {
 		/** Stable identity for the option, e.g. 'octave'. */
 		value: string;
@@ -72,6 +74,8 @@
 		initial: string;
 		/** Full name: the accessible name for an initial cell and the always-visible active name. */
 		label: string;
+		/** Optional inline SVG component used instead of the visible initial. */
+		icon?: Component;
 	}
 
 	export interface Props {
@@ -81,6 +85,11 @@
 		segments?: Segment[];
 		/** Selected segment's `value`. Local-only; defaults to the first segment. */
 		selected?: string;
+		/** Keep the legend as the accessible group name while removing its visible text. */
+		hideLegend?: boolean;
+		/** Remove the hidden legend's layout row when a denser control stack needs the space. */
+		collapseLegend?: boolean;
+		disabled?: boolean;
 	}
 
 	const DEFAULT_SEGMENTS: Segment[] = [
@@ -92,7 +101,10 @@
 	let {
 		legend = 'Pitch bank',
 		segments = DEFAULT_SEGMENTS,
-		selected = $bindable(segments[0]?.value ?? '')
+		selected = $bindable(segments[0]?.value ?? ''),
+		hideLegend = false,
+		collapseLegend = false,
+		disabled = false
 	}: Props = $props();
 
 	const uid = $props.id();
@@ -141,8 +153,13 @@
 	}
 </script>
 
-<fieldset class="segment-switch" style={`width: ${moduleWidth}px; padding-inline: ${trackPadX}px;`}>
-	<legend class="legend">{legend}</legend>
+<fieldset
+	class="segment-switch"
+	class:legend-collapsed={collapseLegend}
+	class:disabled
+	style={`width: ${moduleWidth}px; padding-inline: ${trackPadX}px;`}
+>
+	<legend class="legend"><span class:visually-hidden={hideLegend}>{legend}</span></legend>
 
 	<div class="track-band">
 		<!-- Not aria-hidden here: this element directly contains the real radio inputs and labels —
@@ -157,11 +174,17 @@
 					id={idFor(index)}
 					name={groupName}
 					value={segment.value}
+					{disabled}
 					bind:group={selected}
 					aria-label={segment.label}
 				/>
 				<label class="segment-label" class:active={selectedIndex === index} for={idFor(index)}>
-					{segment.initial}
+					{#if segment.icon}
+						{@const Icon = segment.icon}
+						<span class="segment-icon"><Icon /></span>
+					{:else}
+						{segment.initial}
+					{/if}
 					<span class="help" aria-hidden="true">{segment.label}</span>
 				</label>
 			{/each}
@@ -196,6 +219,38 @@
 		text-align: center;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.segment-switch.legend-collapsed {
+		height: calc(var(--band-2) - var(--label-line));
+	}
+
+	.segment-switch.disabled {
+		opacity: 0.55;
+	}
+
+	.legend-collapsed .legend {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.visually-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	/* The 32px band: pad-1 (4px) + the 24px track + pad-1 (4px). */
@@ -235,6 +290,10 @@
 		user-select: none;
 	}
 
+	.segment-switch.disabled .segment-label {
+		cursor: not-allowed;
+	}
+
 	/* Design-review correction: inactive segments are NOT dimmed — every segment stays --color-text so
 	   the only thing that moves is the thumb underneath. The selected one flips to --color-accent-text
 	   purely because the thumb (--color-accent) has slid under it and needs contrast against that fill
@@ -245,6 +304,19 @@
 	.segment-label.active {
 		color: var(--color-accent-text);
 		font-weight: 700;
+	}
+
+	.segment-icon {
+		display: flex;
+		width: 100%;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+	}
+
+	.segment-icon :global(svg) {
+		width: 100%;
+		height: auto;
 	}
 
 	.active-name {

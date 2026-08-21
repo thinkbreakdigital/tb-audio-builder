@@ -174,7 +174,6 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				file: 'components/SelectField.svelte (exists)',
 				instrument: [
 					'Pitched waveform',
-					'Filter type',
 					'Percussion oscillator waveform',
 					'Noise layer filter type',
 					'Voice steal mode',
@@ -182,9 +181,9 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				],
 				mixer: [],
 				transport: [],
-				source: '09B §4.4',
+				source: '09B §4.4 · InstrumentChannelMockupAdjustment.md',
 				guidance:
-					'Compact native select, styled for the one- or two-character SVG/glyph labels used by most callers. Keep the option labels and accessible name intact; SegmentSwitch stays reserved for bank selection and Mono/Poly. Once WaveformIcon exists, the Wave options render it in place of the current plain characters.'
+					'Waveform uses the custom listbox specimen because native option elements cannot render the five inline SVG glyphs. It preserves the selected value, accessible name, focus, arrow/Home/End navigation, Enter/Space, Escape, and typeahead behavior. Plain-text production fields can continue to use the native SelectField. Filter type uses the three-position icon SegmentSwitch.'
 			},
 			{
 				slug: 'latching-switch',
@@ -253,13 +252,13 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				name: 'ControlSection',
 				file: 'components/ControlGroup.svelte · components/Panel.svelte (exists)',
 				instrument: [
-					'Pitched: Oscillator, Amplitude, Filter, Modulation, Voices',
+					'Pitched: Oscillator, Amplitude, Filter, Voices',
 					'Percussion: Instrument, Oscillator layer, Noise layer',
 					'Channel header'
 				],
 				mixer: ['Loop', 'Master', 'Sound sets'],
 				transport: [],
-				source: '09B §4.4 · conventions §5',
+				source: '09B §4.4 · conventions §5 · InstrumentChannelMockupAdjustment.md',
 				guidance:
 					'The bordered, titled surface everything else sits inside — Panel is the outer level and ControlGroup the inner one; visually the same treatment at two depths. Flat 1px borders, no shadow. Disabled sections stay in place and keep their values readable. Must wrap legibly at 1024×640 and 200% zoom.'
 			},
@@ -474,13 +473,13 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 			{
 				slug: 'waveform-icon',
 				name: 'WaveformIcon',
-				file: 'components/icons/ (new — one file per waveform, listed below)',
+				file: 'routes/ui/elements/icons/ (exists, one file per waveform, listed below)',
 				instrument: ['Oscillator waveform (SelectorSwitch)'],
 				mixer: [],
 				transport: [],
 				source: 'InstrumentChannelMockupAdjustment.md — Oscillator',
 				guidance:
-					"Five waveform glyphs, each a stroke-only curve in currentColor so it inherits the active/inactive color a SegmentSwitch or SelectorSwitch already uses. SelectorSwitch's Wave specimen currently shows three of the five as bare characters (~, □, △) and has no Saw or Pulse option at all. Pulse has no matching value in PitchedWaveform (sine | triangle | square | sawtooth) yet, so its icon can exist ahead of that schema change. Each glyph is its own component, not one component switched by a prop and not a static image asset — currentColor theming needs inline SVG.",
+					'Five waveform glyphs, each a stroke-only curve in currentColor so it inherits the listbox color. SelectorSwitch renders all five. Pulse has no matching value in PitchedWaveform (sine | triangle | square | sawtooth) yet, so the mockup icon exists ahead of that schema change. Each glyph is its own component so currentColor theming stays inline.',
 				variants: [
 					'SineIcon.svelte',
 					'TriangleIcon.svelte',
@@ -492,7 +491,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 			{
 				slug: 'filter-type-icon',
 				name: 'FilterTypeIcon',
-				file: 'components/icons/ (new — one file per filter type, listed below)',
+				file: 'routes/ui/elements/icons/ (exists, one file per filter type, listed below)',
 				instrument: ['Filter type (SegmentSwitch: Lowpass / Bandpass / Highpass)'],
 				mixer: [],
 				transport: [],
@@ -504,7 +503,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 			{
 				slug: 'dual-pot-label-icon',
 				name: 'DualPotLabelIcon',
-				file: 'components/icons/DualPotLabelIcon.svelte (new — extracted from DualRotaryPot.svelte)',
+				file: 'routes/ui/elements/icons/DualPotLabelIcon.svelte (exists)',
 				instrument: [
 					'Filter cutoff + resonance',
 					'Noise layer cutoff + resonance',
@@ -514,7 +513,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: 'DualRotaryPot.svelte (existing)',
 				guidance:
-					'Already built, but only as inline markup inside DualRotaryPot.svelte (lines 264–280): the semicircle-plus-dot glyph connecting the outer and inner labels. Copy it into its own component and have DualRotaryPot import it, rather than leaving the path data living only inside that one file.'
+					'DualRotaryPot imports this semicircle-plus-dot glyph so every paired control uses the same outer-ring and inner-disc label key.'
 			}
 		]
 	}

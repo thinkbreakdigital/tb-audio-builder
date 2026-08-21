@@ -45,6 +45,8 @@
 		defaultValue?: number;
 		scale?: Scale;
 		size?: 'normal' | 'compact';
+		hideLabel?: boolean;
+		disabled?: boolean;
 	}
 
 	let {
@@ -58,7 +60,9 @@
 		decimals = 0,
 		defaultValue = 1000,
 		scale = 'log',
-		size = 'normal'
+		size = 'normal',
+		hideLabel = false,
+		disabled = false
 	}: Props = $props();
 
 	const uid = $props.id();
@@ -84,6 +88,7 @@
 	}
 
 	function openField() {
+		if (disabled) return;
 		fieldOpen = true;
 	}
 
@@ -96,6 +101,7 @@
 	}
 
 	function handlePointerDown(event: PointerEvent) {
+		if (disabled) return;
 		if (scale === 'log') {
 			startLogDrag(event, value, min, max, commit);
 		} else {
@@ -104,6 +110,7 @@
 	}
 
 	function handleDoubleClick() {
+		if (disabled) return;
 		commit(defaultValue);
 	}
 
@@ -141,8 +148,8 @@
 	}
 </script>
 
-<div class="pot" class:compact={size === 'compact'}>
-	<label for={rangeId}>{label}</label>
+<div class="pot" class:compact={size === 'compact'} class:label-hidden={hideLabel} class:disabled>
+	<label for={rangeId} class:visually-hidden={hideLabel}>{label}</label>
 
 	<div class="dial">
 		<input
@@ -152,6 +159,7 @@
 			{min}
 			{max}
 			{step}
+			{disabled}
 			value={String(value)}
 			oninput={handleRangeInput}
 			onkeydown={handleKeydown}
@@ -175,6 +183,7 @@
 				{min}
 				{max}
 				{step}
+				{disabled}
 				value={draft}
 				use:focusAndSelect
 				oninput={(event) => (draft = (event.currentTarget as HTMLInputElement).value)}
@@ -187,6 +196,7 @@
 			<button
 				type="button"
 				class="value-readout"
+				{disabled}
 				onclick={openField}
 				aria-label={`Edit ${label} value`}
 			>
@@ -222,6 +232,19 @@
 	.pot.compact {
 		/* Compact: label 16 + dial 32 + readout 16 = 64 tall, same 64-wide module. */
 		height: var(--band-2);
+	}
+
+	.pot.label-hidden {
+		justify-content: center;
+	}
+
+	.pot.disabled {
+		opacity: 0.55;
+	}
+
+	.disabled .range-input,
+	.disabled .value-readout {
+		cursor: not-allowed;
 	}
 
 	label {

@@ -1,131 +1,327 @@
 <script lang="ts">
 	/** Static pitched-instrument pane composition for the /ui review surface. */
+	import ControlSection from './ControlSection.svelte';
 	import DualRotaryPot from './DualRotaryPot.svelte';
+	import EnvelopeDisplay from './EnvelopeDisplay.svelte';
 	import PatchHeader from './PatchHeader.svelte';
 	import RotaryPot from './RotaryPot.svelte';
 	import SegmentSwitch from './SegmentSwitch.svelte';
 	import SelectorSwitch from './SelectorSwitch.svelte';
 	import ToggleSwitch from './ToggleSwitch.svelte';
+	import BandpassIcon from './icons/BandpassIcon.svelte';
+	import HighpassIcon from './icons/HighpassIcon.svelte';
+	import LowpassIcon from './icons/LowpassIcon.svelte';
+
+	type EnvelopeParameter = 'attack' | 'decay' | 'sustain' | 'release';
+	type PitchParameter = 'octave' | 'semitone' | 'fine';
+
+	const PITCH_SEGMENTS: { value: PitchParameter; initial: string; label: string }[] = [
+		{ value: 'octave', initial: 'O', label: 'Octave' },
+		{ value: 'semitone', initial: 'S', label: 'Semitone' },
+		{ value: 'fine', initial: 'F', label: 'Fine' }
+	];
+
+	const PITCH_POT_SPECS: Record<
+		PitchParameter,
+		{
+			max: number;
+			min: number;
+			step: number;
+			fineStep: number;
+			unit: string;
+			decimals: number;
+			defaultValue: number;
+		}
+	> = {
+		octave: {
+			min: -3,
+			max: 3,
+			step: 1,
+			fineStep: 1,
+			unit: 'oct',
+			decimals: 0,
+			defaultValue: 0
+		},
+		semitone: {
+			min: -11,
+			max: 11,
+			step: 1,
+			fineStep: 1,
+			unit: 'st',
+			decimals: 0,
+			defaultValue: 0
+		},
+		fine: {
+			min: -99,
+			max: 99,
+			step: 1,
+			fineStep: 1,
+			unit: 'ct',
+			decimals: 0,
+			defaultValue: 0
+		}
+	};
+
+	const ENVELOPE_SEGMENTS: { value: EnvelopeParameter; initial: string; label: string }[] = [
+		{ value: 'attack', initial: 'A', label: 'Attack' },
+		{ value: 'decay', initial: 'D', label: 'Decay' },
+		{ value: 'sustain', initial: 'S', label: 'Sustain' },
+		{ value: 'release', initial: 'R', label: 'Release' }
+	];
+
+	const AMPLITUDE_POT_SPECS: Record<
+		EnvelopeParameter,
+		{
+			label: string;
+			max: number;
+			step: number;
+			fineStep: number;
+			unit: string;
+			decimals: number;
+			defaultValue: number;
+		}
+	> = {
+		attack: {
+			label: 'Attack',
+			max: 5000,
+			step: 10,
+			fineStep: 1,
+			unit: 'ms',
+			decimals: 0,
+			defaultValue: 10
+		},
+		decay: {
+			label: 'Decay',
+			max: 5000,
+			step: 10,
+			fineStep: 1,
+			unit: 'ms',
+			decimals: 0,
+			defaultValue: 250
+		},
+		sustain: {
+			label: 'Sustain',
+			max: 100,
+			step: 1,
+			fineStep: 1,
+			unit: '%',
+			decimals: 0,
+			defaultValue: 70
+		},
+		release: {
+			label: 'Release',
+			max: 5000,
+			step: 10,
+			fineStep: 1,
+			unit: 'ms',
+			decimals: 0,
+			defaultValue: 300
+		}
+	};
+
+	const FILTER_TYPES = [
+		{ value: 'lowpass', initial: 'L', label: 'Lowpass', icon: LowpassIcon },
+		{ value: 'bandpass', initial: 'B', label: 'Bandpass', icon: BandpassIcon },
+		{ value: 'highpass', initial: 'H', label: 'Highpass', icon: HighpassIcon }
+	];
+
+	const VOICE_MODES = [
+		{ value: 'mono', initial: 'MONO', label: 'Mono' },
+		{ value: 'poly', initial: 'POLY', label: 'Poly' }
+	];
 
 	let filterEnabled = $state(true);
-	let vibratoEnabled = $state(false);
-	let polyphonic = $state(true);
+	let filterEnvelopeEnabled = $state(true);
+	let pitchParameter = $state<PitchParameter>('octave');
+	let pitchTuning = $state<Record<PitchParameter, number>>({
+		octave: 0,
+		semitone: 0,
+		fine: 0
+	});
+	let amplitudeParameter = $state<EnvelopeParameter>('attack');
+	let amplitudeEnvelope = $state<Record<EnvelopeParameter, number>>({
+		attack: 10,
+		decay: 250,
+		sustain: 70,
+		release: 300
+	});
+	let filterType = $state('lowpass');
+	let filterEnvelopeParameter = $state('attack');
+	let voiceMode = $state('poly');
+	const polyphonic = $derived(voiceMode === 'poly');
+	const pitchPot = $derived(PITCH_POT_SPECS[pitchParameter]);
+	const amplitudePot = $derived(AMPLITUDE_POT_SPECS[amplitudeParameter]);
 </script>
 
 <section class="instrument-pane" aria-labelledby="instrument-pane-title">
 	<header class="channel-header">
-		<div>
+		<div class="channel-title">
 			<p class="eyebrow">Instrument channel</p>
 			<h2 id="instrument-pane-title">Electric piano</h2>
 		</div>
+		<PatchHeader embedded />
 		<span class="role">PITCHED</span>
 	</header>
 
-	<PatchHeader />
-
 	<div class="sections">
-		<section class="control-section" aria-labelledby="oscillator-title">
-			<h3 id="oscillator-title">Oscillator</h3>
-			<div class="control-row">
-				<SelectorSwitch />
-				<SegmentSwitch />
-				<RotaryPot
-					label="Level"
-					value={0.8}
-					min={0}
-					max={1}
-					step={0.01}
-					fineStep={0.001}
-					unit=""
-					decimals={2}
-					scale="linear"
-					size="compact"
-				/>
-			</div>
-		</section>
-
-		<section class="control-section" aria-labelledby="amplitude-title">
-			<h3 id="amplitude-title">Amplitude</h3>
-			<div class="control-row">
+		<ControlSection legend="Oscillator" width="oscillator">
+			<div class="pitch-bank">
+				<SelectorSwitch hideActiveName />
 				<SegmentSwitch
-					legend="Envelope"
-					segments={[
-						{ value: 'attack', initial: 'A', label: 'Attack' },
-						{ value: 'decay', initial: 'D', label: 'Decay' },
-						{ value: 'sustain', initial: 'S', label: 'Sustain' },
-						{ value: 'release', initial: 'R', label: 'Release' }
-					]}
-				/>
-				<RotaryPot
-					label="Envelope"
-					value={0.2}
-					min={0}
-					max={2}
-					step={0.01}
-					fineStep={0.001}
-					unit="s"
-					decimals={2}
-					scale="linear"
-					size="compact"
+					legend="Pitch parameter"
+					hideLegend
+					collapseLegend
+					segments={PITCH_SEGMENTS}
+					bind:selected={pitchParameter}
 				/>
 			</div>
-		</section>
+			<RotaryPot
+				label="Pitch"
+				bind:value={pitchTuning[pitchParameter]}
+				min={pitchPot.min}
+				max={pitchPot.max}
+				step={pitchPot.step}
+				fineStep={pitchPot.fineStep}
+				unit={pitchPot.unit}
+				decimals={pitchPot.decimals}
+				defaultValue={pitchPot.defaultValue}
+				scale="linear"
+				size="compact"
+			/>
+			<RotaryPot
+				label="Level"
+				value={0.8}
+				min={0}
+				max={1}
+				step={0.01}
+				fineStep={0.001}
+				unit=""
+				decimals={2}
+				defaultValue={0.8}
+				scale="linear"
+				size="compact"
+			/>
+		</ControlSection>
 
-		<section class="control-section" aria-labelledby="filter-title">
-			<h3 id="filter-title">Filter</h3>
-			<div class="control-row">
-				<ToggleSwitch label="Enabled" bind:checked={filterEnabled} />
-				<SelectorSwitch />
-				<DualRotaryPot />
-			</div>
-		</section>
-
-		<section class="control-section" aria-labelledby="modulation-title">
-			<h3 id="modulation-title">Modulation</h3>
-			<div class="control-row">
-				<ToggleSwitch label="Vibrato" bind:checked={vibratoEnabled} />
-				<DualRotaryPot />
-				<RotaryPot
-					label="Bend"
-					value={2}
-					min={0}
-					max={24}
-					step={1}
-					fineStep={1}
-					unit="st"
-					decimals={0}
-					scale="linear"
-					size="compact"
+		<ControlSection legend="Amplitude" width="compact" joined>
+			<div class="envelope-bank">
+				<EnvelopeDisplay
+					label="Amplitude ADSR envelope curve"
+					attack={amplitudeEnvelope.attack}
+					decay={amplitudeEnvelope.decay}
+					sustain={amplitudeEnvelope.sustain}
+					release={amplitudeEnvelope.release}
+				/>
+				<SegmentSwitch
+					legend="Amplitude envelope parameter"
+					hideLegend
+					collapseLegend
+					segments={ENVELOPE_SEGMENTS}
+					bind:selected={amplitudeParameter}
 				/>
 			</div>
-		</section>
+			<RotaryPot
+				label={amplitudePot.label}
+				hideLabel
+				bind:value={amplitudeEnvelope[amplitudeParameter]}
+				min={0}
+				max={amplitudePot.max}
+				step={amplitudePot.step}
+				fineStep={amplitudePot.fineStep}
+				unit={amplitudePot.unit}
+				decimals={amplitudePot.decimals}
+				defaultValue={amplitudePot.defaultValue}
+				scale="linear"
+				size="compact"
+			/>
+		</ControlSection>
 
-		<section class="control-section" aria-labelledby="voices-title">
-			<h3 id="voices-title">Voices</h3>
-			<div class="control-row">
-				<ToggleSwitch label="Poly" bind:checked={polyphonic} />
-				<RotaryPot
-					label="Max voices"
-					value={8}
-					min={1}
-					max={32}
-					step={1}
-					fineStep={1}
-					unit=""
-					decimals={0}
-					scale="linear"
-					size="compact"
+		<ControlSection legend="Filter" width="compact" joined disabled={!filterEnabled}>
+			<div class="filter-bank">
+				<ToggleSwitch label="On/Off" hideHint bind:checked={filterEnabled} />
+				<SegmentSwitch
+					legend="Filter type"
+					hideLegend
+					collapseLegend
+					disabled={!filterEnabled}
+					segments={FILTER_TYPES}
+					bind:selected={filterType}
 				/>
-				<SelectorSwitch />
 			</div>
-		</section>
+			<DualRotaryPot disabled={!filterEnabled} />
+		</ControlSection>
+
+		<ControlSection legend="Filter Envelope" joined disabled={!filterEnabled}>
+			<div class="filter-envelope-bank">
+				<ToggleSwitch
+					label="On/Off"
+					hideHint
+					disabled={!filterEnabled}
+					bind:checked={filterEnvelopeEnabled}
+				/>
+				<SegmentSwitch
+					legend="Filter envelope parameter"
+					hideLegend
+					collapseLegend
+					disabled={!filterEnabled || !filterEnvelopeEnabled}
+					segments={ENVELOPE_SEGMENTS}
+					bind:selected={filterEnvelopeParameter}
+				/>
+			</div>
+			<RotaryPot
+				label="Envelope"
+				value={0.2}
+				min={0}
+				max={2}
+				step={0.01}
+				fineStep={0.001}
+				unit="s"
+				decimals={2}
+				defaultValue={0.2}
+				scale="linear"
+				size="compact"
+				disabled={!filterEnabled || !filterEnvelopeEnabled}
+			/>
+			<RotaryPot
+				label="Env amt"
+				value={0}
+				min={-1}
+				max={1}
+				step={0.01}
+				fineStep={0.001}
+				unit=""
+				decimals={2}
+				defaultValue={0}
+				scale="linear"
+				size="compact"
+				disabled={!filterEnabled || !filterEnvelopeEnabled}
+			/>
+		</ControlSection>
+
+		<ControlSection legend="Voices" width="compact" joined>
+			<SegmentSwitch legend="Voice mode" segments={VOICE_MODES} bind:selected={voiceMode} />
+			<RotaryPot
+				label="Glide"
+				value={0.08}
+				min={0.005}
+				max={2}
+				step={0.005}
+				fineStep={0.001}
+				unit="s"
+				decimals={3}
+				defaultValue={0.08}
+				scale="linear"
+				size="compact"
+				disabled={polyphonic}
+			/>
+		</ControlSection>
 	</div>
 </section>
 
 <style>
 	.instrument-pane {
-		width: 100%;
 		box-sizing: border-box;
+		width: 100%;
 		padding: var(--space-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
@@ -135,9 +331,13 @@
 	.channel-header {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
 		gap: var(--space-2);
-		margin-bottom: var(--space-2);
+		min-width: 0;
+	}
+
+	.channel-title {
+		flex: 0 0 var(--mod-5);
+		min-width: 0;
 	}
 
 	.eyebrow {
@@ -147,19 +347,13 @@
 		font-size: var(--font-size-sm);
 	}
 
-	h2,
-	h3 {
-		margin: 0;
-	}
-
 	h2 {
-		font-size: var(--font-size-base);
-	}
-	h3 {
+		margin: 0;
 		font-size: var(--font-size-base);
 	}
 
 	.role {
+		flex: 0 0 auto;
 		padding: 0 var(--space-1);
 		border: var(--border-width) solid var(--color-border);
 		border-radius: var(--radius);
@@ -168,51 +362,46 @@
 		font-size: var(--font-size-sm);
 	}
 
+	.envelope-bank {
+		display: flex;
+		flex: 0 0 var(--mod-3);
+		flex-direction: column;
+		width: var(--mod-3);
+		height: var(--band-3);
+	}
+
+	.pitch-bank {
+		display: flex;
+		flex: 0 0 var(--mod-2);
+		flex-direction: column;
+		width: var(--mod-2);
+		height: var(--band-3);
+	}
+
+	.filter-bank {
+		display: flex;
+		flex: 0 0 var(--mod-2);
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--pad-1);
+		width: var(--mod-2);
+		height: calc(var(--band-3) + var(--pad-1));
+	}
+
+	.filter-envelope-bank {
+		display: flex;
+		flex: 0 0 var(--mod-3);
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--pad-1);
+		width: var(--mod-3);
+		height: calc(var(--band-3) + var(--pad-1));
+	}
+
 	.sections {
 		display: flex;
 		gap: 0;
 		margin-top: var(--space-2);
 		overflow-x: auto;
-	}
-
-	.control-section {
-		/* Exact outer footprint: 224x128. The 96px control row stays start-aligned and the grid row
-		   absorbs the six vertical pixels left after border, padding, and the 16px heading. */
-		box-sizing: border-box;
-		display: grid;
-		grid-template-rows: var(--label-line) minmax(0, 1fr);
-		gap: 0;
-		flex: 0 0 var(--mod-7);
-		min-width: 0;
-		height: var(--band-4);
-		padding: var(--pad-1) 0;
-		border: var(--border-width) solid var(--color-border);
-		border-radius: 0;
-		background: var(--color-surface);
-	}
-
-	.control-section + .control-section {
-		border-inline-start-width: 0;
-		padding-inline-start: var(--border-width);
-	}
-
-	.control-row {
-		display: flex;
-		flex-wrap: nowrap;
-		align-items: start;
-		gap: 0;
-		width: 100%;
-		height: var(--band-3);
-		min-width: 0;
-	}
-
-	.control-row > :global(*) {
-		min-width: 0;
-	}
-
-	@media (max-width: 640px) {
-		.instrument-pane {
-			padding: var(--space-2);
-		}
 	}
 </style>
