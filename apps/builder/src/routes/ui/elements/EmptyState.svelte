@@ -1,4 +1,9 @@
 <script lang="ts">
+	/**
+	 * Modular footprint (00-conventions.md §5.4): width var(--mod-7) (224px, down from 230px),
+	 * clamped to the viewport via min() rather than a resizing media query. The internal button's
+	 * ~26px height becomes var(--control-height), one band.
+	 */
 	let selected = $state(false);
 </script>
 
@@ -12,12 +17,13 @@
 
 <style>
 	.empty-state {
+		box-sizing: border-box;
 		display: flex;
-		width: min(230px, 100%);
+		width: min(var(--mod-7), 100%);
 		flex-direction: column;
 		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-4);
+		padding: var(--pad-3);
 		color: var(--color-text-muted);
 		text-align: center;
 	}
@@ -28,8 +34,9 @@
 		font-size: var(--font-size-sm);
 	}
 	button {
-		height: 26px;
-		padding: 0 var(--space-2);
+		box-sizing: border-box;
+		height: var(--control-height);
+		padding: 0 var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: transparent;
@@ -48,15 +55,6 @@
 	button:focus-visible {
 		outline: 2px solid var(--color-accent);
 		outline-offset: 2px;
-	}
-	@media (max-width: 640px) {
-		.empty-state {
-			width: 100%;
-			padding: var(--space-3);
-		}
-		button {
-			height: var(--control-height);
-		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		button {

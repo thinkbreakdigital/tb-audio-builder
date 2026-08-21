@@ -34,7 +34,7 @@
 		levelDb = -6,
 		minDb = -48,
 		maxDb = 6,
-		height = '72px',
+		height = '96px',
 		showScale = false,
 		orientation = 'vertical'
 	}: Props = $props();
@@ -80,10 +80,12 @@
 </div>
 
 <style>
+	/* Specimen footprint (vertical, scale shown): meter 16 + gap 16 + scale 32 = 64 wide
+	   (--mod-2), bar 96 tall (--band-3, the default `height`) (00-conventions.md §5.4). */
 	.meter-with-scale {
 		display: flex;
 		align-items: stretch;
-		gap: var(--space-1);
+		gap: var(--space-4);
 		height: var(--meter-length);
 	}
 
@@ -91,7 +93,7 @@
 		/* The caller controls the throw so a strip can match its adjacent fader exactly. */
 		box-sizing: border-box;
 		position: relative;
-		width: var(--space-3);
+		width: var(--meter-width);
 		height: var(--meter-length);
 		overflow: hidden;
 		border: var(--border-width) solid var(--color-border-strong);
@@ -105,7 +107,7 @@
 
 	.horizontal .meter {
 		width: var(--meter-length);
-		height: var(--space-3);
+		height: var(--meter-width);
 	}
 
 	.zone {
@@ -133,9 +135,9 @@
 
 	.scale {
 		position: relative;
-		width: 28px;
+		width: var(--meter-scale-width);
 		font-family: var(--font-mono);
-		font-size: 10px;
+		font-size: var(--font-size-sm);
 		line-height: 1;
 		color: var(--color-text-muted);
 	}

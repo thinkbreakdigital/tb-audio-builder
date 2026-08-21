@@ -44,9 +44,9 @@
 				decimals={0}
 				showLabel={false}
 				showReadout={false}
-				shaftHeight="100%"
+				shaftHeight="var(--mixer-level-rail-height)"
 			/>
-			<LevelMeter levelDb={masterVolumeDb} height="100%" showScale />
+			<LevelMeter levelDb={masterVolumeDb} height="var(--mixer-level-rail-height)" showScale />
 		</div>
 	</div>
 	<ToggleSwitch label="Compressor" bind:checked={compressorEnabled} />
@@ -54,24 +54,40 @@
 
 <style>
 	.master-strip {
+		/* Border-box height: 1 + 7 slack + 48 + 32 + 224 + 64 + 7 slack + 1 = 384.
+		   Matching edge tracks put both level rails at 88..312 without off-scale padding. */
 		display: grid;
 		justify-items: center;
-		gap: var(--space-2);
-		width: 136px;
+		align-items: start;
+		gap: 0;
+		width: var(--mod-5);
 		height: var(--mixer-strip-height);
 		box-sizing: border-box;
-		grid-template-rows: auto minmax(0, 1fr) auto;
-		padding: var(--space-2);
-		border: 2px solid var(--color-border-strong);
+		grid-template-rows:
+			minmax(0, 1fr)
+			calc(var(--band-1) + var(--label-line))
+			calc(var(--band-1) + var(--mixer-level-rail-height))
+			var(--band-2)
+			minmax(0, 1fr);
+		padding: 0;
+		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-surface);
 	}
 
+	.master-strip::before,
+	.master-strip::after {
+		content: '';
+	}
+
 	header {
+		box-sizing: border-box;
 		display: flex;
 		align-items: center;
 		gap: var(--space-1);
 		width: 100%;
+		height: 100%;
+		padding: 0 var(--pad-2);
 		font-family: var(--font-mono);
 		font-size: var(--font-size-sm);
 		font-weight: 700;
@@ -84,24 +100,22 @@
 
 	.volume {
 		display: grid;
-		grid-template-rows: auto minmax(0, 1fr);
+		grid-template-rows: var(--band-1) var(--mixer-level-rail-height);
 		justify-items: center;
+		width: 100%;
+		height: 100%;
 		min-height: 0;
-		gap: var(--space-1);
+		gap: 0;
 		font-size: var(--font-size-sm);
 	}
 
 	.level-rail {
 		display: flex;
+		justify-content: center;
 		align-items: stretch;
-		gap: var(--space-2);
-		height: auto;
+		gap: 0;
+		width: var(--mod-4);
+		height: var(--mixer-level-rail-height);
 		min-height: 0;
-	}
-
-	@media (max-width: 640px) {
-		.master-strip {
-			width: 156px;
-		}
 	}
 </style>

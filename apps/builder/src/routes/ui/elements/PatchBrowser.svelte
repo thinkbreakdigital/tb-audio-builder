@@ -49,17 +49,17 @@
 
 <style>
 	.patch-browser {
-		width: min(280px, 100%);
+		width: min(var(--mod-9), 100%);
 		border: var(--border-width) solid var(--color-border-strong);
 		background: var(--color-background);
 		color: var(--color-text);
 	}
 	.heading {
 		display: grid;
-		grid-template-columns: 1fr 112px;
+		grid-template-columns: 1fr var(--mod-3);
 		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-2);
+		padding: var(--pad-2);
 		border-bottom: var(--border-width) solid var(--color-border);
 	}
 	h2,
@@ -73,7 +73,7 @@
 	input {
 		box-sizing: border-box;
 		width: 100%;
-		height: 24px;
+		height: var(--control-height);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-surface);
@@ -87,11 +87,11 @@
 		outline-offset: 1px;
 	}
 	.patch-list {
-		max-height: 156px;
+		max-height: var(--band-5);
 		overflow: auto;
 	}
 	.patch-group {
-		padding: var(--space-2);
+		padding: var(--pad-2);
 		border-bottom: var(--border-width) solid var(--color-border);
 	}
 	h3 {
@@ -105,8 +105,8 @@
 		width: 100%;
 		align-items: center;
 		justify-content: space-between;
-		min-height: 26px;
-		padding: 0 var(--space-2);
+		min-height: var(--control-height);
+		padding: 0 var(--pad-2);
 		border: var(--border-width) solid transparent;
 		border-radius: var(--radius);
 		background: transparent;
@@ -129,10 +129,10 @@
 	}
 	small {
 		color: var(--color-text-muted);
-		font-size: 10px;
+		font-size: var(--font-size-sm);
 	}
 	.no-results {
-		padding: var(--space-3);
+		padding: var(--pad-2);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}
@@ -141,13 +141,13 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-2);
-		padding: var(--space-2);
+		padding: var(--pad-2);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}
 	.apply {
-		height: 26px;
-		padding: 0 var(--space-2);
+		height: var(--control-height);
+		padding: 0 var(--pad-2);
 		border: var(--border-width) solid var(--color-accent);
 		border-radius: var(--radius);
 		background: var(--color-accent);
@@ -155,26 +155,6 @@
 		font: inherit;
 		font-size: var(--font-size-sm);
 		cursor: pointer;
-	}
-	@media (max-width: 640px) {
-		.patch-browser {
-			width: 100%;
-		}
-		.heading {
-			grid-template-columns: 1fr;
-		}
-		input {
-			height: var(--control-height);
-		}
-		.patch-list {
-			max-height: 200px;
-		}
-		.patch-group button {
-			min-height: 36px;
-		}
-		.apply {
-			height: var(--control-height);
-		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.patch-group button {

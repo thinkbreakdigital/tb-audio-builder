@@ -56,7 +56,7 @@
 		gap: var(--space-2);
 		width: 100%;
 		min-height: var(--control-height);
-		padding: var(--space-1) var(--space-3);
+		padding: var(--space-1) var(--space-2);
 		border: 0;
 		border-bottom: var(--border-width) solid var(--color-border);
 		border-left: 2px solid transparent;

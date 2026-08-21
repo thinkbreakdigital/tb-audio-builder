@@ -55,7 +55,7 @@
 		defaultValue = 0.8,
 		decimals = 2,
 		orientation = 'vertical',
-		shaftHeight = '72px',
+		shaftHeight = '96px',
 		showLabel = true,
 		showReadout = true,
 		density = 'normal'
@@ -135,6 +135,7 @@
 	class="linear-pot"
 	class:horizontal={orientation === 'horizontal'}
 	class:compact={density === 'compact'}
+	class:shaftOnly={!showLabel && !showReadout}
 	style={`--shaft-height: ${shaftHeight};`}
 >
 	{#if showLabel}<label for={rangeId} class="pot-label">{label}</label>{/if}
@@ -200,18 +201,50 @@
 
 <style>
 	.linear-pot {
+		box-sizing: border-box;
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: var(--space-2);
-		width: fit-content;
+		gap: 0;
+		/* Declared footprint: label 16 + readout 32 + shaft 96 + a 16px bottom pad = 160 tall,
+		   64 wide (00-conventions.md §5.4). Order is visual, not DOM order — the readout stays
+		   above the shaft (see the `order` rules below) to match the channel strip, where the
+		   dB readout sits above the fader rail. The 32px hit area is narrower than the 64px
+		   module, so centering it already leaves the 16px inset on each side; the 16px pad below
+		   the shaft is real padding, not a centering side-effect. */
+		width: var(--mod-2);
+		padding-bottom: var(--pad-3);
 		font-size: var(--font-size-sm);
 	}
 
+	/* Vertical is the only orientation whose readout sits above the shaft; horizontal (including
+	   compact Pan) keeps the natural label/shaft/value source order. */
+	.linear-pot:not(.horizontal) .fader-shaft {
+		order: 2;
+	}
+
+	.linear-pot:not(.horizontal) .value-slot {
+		order: 1;
+	}
+
+	/* In a mixer strip the shaft is the whole control footprint. The specimen-only bottom pad
+	   must not turn a seven-band shaft into a 240px child inside a 224px rail. */
+	.linear-pot.shaftOnly {
+		padding-bottom: 0;
+	}
+
 	.pot-label {
+		flex-shrink: 0;
+		width: 100%;
+		height: var(--label-line);
+		line-height: var(--label-line);
+		overflow: hidden;
 		color: var(--color-text);
 		font-weight: 700;
 		text-align: center;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	/* Fixed height reserves the value readout's space whether it's showing plain text or the
@@ -219,10 +252,10 @@
 	.value-slot {
 		position: relative;
 		display: flex;
+		flex-shrink: 0;
 		align-items: center;
 		justify-content: center;
 		width: 100%;
-		min-width: 64px;
 		height: var(--control-height);
 	}
 
@@ -263,8 +296,10 @@
 
 	.fader-shaft {
 		display: flex;
+		flex-shrink: 0;
 		justify-content: center;
-		/* Specimen throw: 72px. Production channel strip uses ~140px. */
+		/* Specimen throw: 96px (label 16 + readout 32 + shaft 96 + pad 16 = 160). A mixer strip
+		   passes --mixer-level-rail-height (224px) explicitly. */
 		height: var(--shaft-height);
 	}
 
@@ -272,7 +307,7 @@
 		appearance: none;
 		writing-mode: vertical-lr;
 		direction: rtl;
-		width: 24px;
+		width: var(--fader-hit-width);
 		height: 100%;
 		margin: 0;
 		background: transparent;
@@ -288,7 +323,7 @@
 	}
 
 	.fader-input::-webkit-slider-runnable-track {
-		width: 6px;
+		width: var(--fader-track);
 		height: 100%;
 		background: var(--color-surface-active);
 		border: var(--border-width) solid var(--color-border);
@@ -296,97 +331,99 @@
 	}
 
 	.fader-input::-moz-range-track {
-		width: 6px;
+		width: var(--fader-track);
 		height: 100%;
 		background: var(--color-surface-active);
 		border: var(--border-width) solid var(--color-border);
 		border-radius: var(--radius);
 	}
 
+	/* Thumb centers on the track: offset is (track - thumb) / 2, e.g. -8px for an 8px track and a
+	   24px thumb (00-conventions.md §5.4). */
 	.fader-input::-webkit-slider-thumb {
 		appearance: none;
-		width: 22px;
-		height: 11px;
-		margin-left: -8px;
+		width: var(--fader-thumb-long);
+		height: var(--fader-thumb-short);
+		margin-left: calc((var(--fader-track) - var(--fader-thumb-long)) / 2);
 		background: var(--color-accent);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 	}
 
 	.fader-input::-moz-range-thumb {
-		width: 22px;
-		height: 11px;
+		width: var(--fader-thumb-long);
+		height: var(--fader-thumb-short);
 		background: var(--color-accent);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 	}
 
 	.horizontal {
-		width: 100%;
+		width: fit-content;
+		padding-bottom: 0;
 	}
 
 	.horizontal .fader-shaft {
-		width: 96px;
-		height: 24px;
+		width: var(--mod-3);
+		height: var(--control-height);
 	}
 
 	.horizontal .fader-input {
 		writing-mode: horizontal-tb;
 		direction: ltr;
 		width: 100%;
-		height: 24px;
+		height: var(--control-height);
 		cursor: ew-resize;
 	}
 
 	.horizontal .fader-input::-webkit-slider-runnable-track {
 		width: 100%;
-		height: 6px;
+		height: var(--fader-track);
 	}
 
 	.horizontal .fader-input::-moz-range-track {
 		width: 100%;
-		height: 6px;
+		height: var(--fader-track);
 	}
 
 	.horizontal .fader-input::-webkit-slider-thumb {
-		width: 11px;
-		height: 22px;
-		margin-top: -8px;
+		width: var(--fader-thumb-short);
+		height: var(--fader-thumb-long);
+		margin-top: calc((var(--fader-track) - var(--fader-thumb-long)) / 2);
 	}
 
 	.horizontal .fader-input::-moz-range-thumb {
-		width: 11px;
-		height: 22px;
+		width: var(--fader-thumb-short);
+		height: var(--fader-thumb-long);
 	}
 
+	/* Pan control: one 32px band, laid out inline instead of stacked — label 24 + gap 8 + shaft 48
+	   + gap 8 + value 24 = 112 (00-conventions.md §5.4). */
 	.horizontal.compact {
-		gap: 0;
+		flex-direction: row;
+		align-items: center;
+		gap: var(--space-2);
+		height: var(--control-height);
 	}
 
 	.horizontal.compact .pot-label {
-		line-height: 1;
+		width: var(--space-5);
+		height: 100%;
+		line-height: var(--control-height);
 	}
 
 	.horizontal.compact .fader-shaft {
-		height: 14px;
+		width: calc(var(--u) * 6);
+		height: 100%;
 	}
 
 	.horizontal.compact .fader-input {
-		height: 14px;
+		height: 100%;
 	}
 
 	.horizontal.compact .value-slot {
-		height: 16px;
-		min-width: 0;
-	}
-
-	.horizontal.compact .fader-input::-webkit-slider-thumb {
-		height: 14px;
-		margin-top: -4px;
-	}
-
-	.horizontal.compact .fader-input::-moz-range-thumb {
-		height: 14px;
+		width: var(--space-5);
+		height: 100%;
 	}
 
 	/* A readout that happens to be clickable, not a chunky button: no control-height box, no border —
@@ -423,7 +460,12 @@
 	}
 
 	.error {
+		position: absolute;
+		inset-block-start: 100%;
+		inset-inline: 0;
+		z-index: 1;
 		margin: 0;
+		background: var(--color-background);
 		color: var(--color-danger);
 		text-align: center;
 	}

@@ -1,5 +1,10 @@
 <script lang="ts">
-	/** Preset step controls with a persistent text cue for arrow meanings. */
+	/**
+	 * Preset step controls with a persistent text cue for arrow meanings.
+	 *
+	 * Modular footprint (00-conventions.md §5.4): each button is 32x32, var(--control-height) on both
+	 * axes — one band square, already aligned to the grid.
+	 */
 	let patchNumber = $state(3);
 
 	function step(amount: number) {
@@ -25,6 +30,7 @@
 	}
 
 	button {
+		box-sizing: border-box;
 		width: var(--control-height);
 		height: var(--control-height);
 		padding: 0;
@@ -57,13 +63,6 @@
 		font-size: var(--font-size-sm);
 		text-align: center;
 		font-variant-numeric: tabular-nums;
-	}
-
-	@media (max-width: 640px) {
-		button {
-			width: 36px;
-			height: 36px;
-		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,15 @@
 <script lang="ts">
-	/** Button treatments only; actions intentionally stay local to the catalog. */
+	/**
+	 * Button treatments only; actions intentionally stay local to the catalog.
+	 *
+	 * Modular footprint (00-conventions.md §5.4): min-width var(--mod-2) (64px), height one band
+	 * (var(--control-height), 32px). A momentary action button's label length varies ("Browse" vs.
+	 * "Apply" vs. "Reset" vs. "Stop"), so width comes from min-width rather than a fixed value — a
+	 * short label sits inside the 64px floor, a longer one pushes the border-box past it. This button
+	 * never sits in a butted run, so there is no neighbour it must land flush against; exact 32px-step
+	 * snapping per label would need per-label width lookups or runtime text measurement, which is out
+	 * of scope for a sizing pass, so growth beyond the 64px floor is left to normal content flow.
+	 */
 	let lastAction = $state('No action selected');
 </script>
 
@@ -31,8 +41,10 @@
 	}
 
 	button {
+		box-sizing: border-box;
+		min-width: var(--mod-2);
 		height: var(--control-height);
-		padding: 0 var(--space-2);
+		padding: 0 var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-background);
@@ -87,12 +99,6 @@
 		margin: 0;
 		color: var(--color-text-muted);
 		font-family: var(--font-mono);
-	}
-
-	@media (max-width: 640px) {
-		button {
-			min-height: 36px;
-		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

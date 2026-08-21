@@ -61,8 +61,11 @@
 <style>
 	.workspace {
 		display: grid;
-		grid-template-rows: 40px minmax(0, 1fr) 48px;
-		grid-template-columns: 260px minmax(0, 1fr);
+		/* The middle row is the elastic, exempt row per 00-conventions.md §5.4: it is a
+		   scroll container and is deliberately not band-quantized. Do not "fix" it to a
+		   band value. */
+		grid-template-rows: var(--shell-bar-height) minmax(0, 1fr) var(--shell-bar-height);
+		grid-template-columns: var(--shell-sidebar-width) minmax(0, 1fr);
 		height: 100%;
 		min-height: 0;
 		overflow: hidden;
@@ -71,7 +74,10 @@
 	/* Below the supported 1024px viewport the sidebar stacks above the main panel. */
 	@media (max-width: 899px) {
 		.workspace {
-			grid-template-rows: 40px minmax(0, 180px) minmax(0, 1fr) 48px;
+			/* The stacked sidebar gets six bands; the main panel stays the exempt elastic row. */
+			grid-template-rows: var(--shell-bar-height) minmax(0, var(--band-6)) minmax(0, 1fr) var(
+					--shell-bar-height
+				);
 			grid-template-columns: minmax(0, 1fr);
 		}
 	}

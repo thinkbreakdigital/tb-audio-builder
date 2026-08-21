@@ -21,7 +21,7 @@
 
 <style>
 	.advanced-drawer {
-		width: min(100%, 300px);
+		width: min(100%, var(--mod-10));
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-background);
@@ -29,7 +29,7 @@
 
 	summary {
 		min-height: var(--control-height);
-		padding: var(--space-1) var(--space-2);
+		padding: var(--pad-1) var(--pad-2);
 		color: var(--color-text);
 		font-size: var(--font-size-sm);
 		font-weight: 700;
@@ -42,7 +42,7 @@
 	}
 
 	.drawer-content {
-		padding: var(--space-2);
+		padding: var(--pad-2);
 		border-top: var(--border-width) solid var(--color-border);
 	}
 
@@ -73,14 +73,5 @@
 	dd {
 		margin: 0;
 		color: var(--color-text);
-	}
-
-	@media (max-width: 640px) {
-		.advanced-drawer {
-			width: 100%;
-		}
-		summary {
-			min-height: 36px;
-		}
 	}
 </style>

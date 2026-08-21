@@ -123,21 +123,34 @@
 
 <style>
 	.scrub-slider {
+		box-sizing: border-box;
+		position: relative;
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-1);
+		gap: 0;
+		/* Declared footprint: label 16 + input band 32 + readouts 16 = 64 tall (--band-2), full
+		   width (00-conventions.md §5.4). Rows butt with zero gap; each row's own height is the
+		   sub-band token, not a flex-computed one. */
 		width: 100%;
+		height: var(--band-2);
 	}
 
 	.scrub-label {
+		flex-shrink: 0;
+		height: var(--label-line);
+		overflow: hidden;
+		line-height: var(--label-line);
 		font-size: var(--font-size-sm);
 		font-weight: 700;
 		/* The label stays full-contrast even when disabled — the control dims, not the wayfinding. */
 		color: var(--color-text);
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.scrub-input {
 		appearance: none;
+		flex-shrink: 0;
 		width: 100%;
 		height: var(--control-height);
 		margin: 0;
@@ -155,32 +168,34 @@
 	}
 
 	.scrub-input::-webkit-slider-runnable-track {
-		height: 6px;
+		height: var(--fader-track);
 		background: var(--color-surface-active);
 		border: var(--border-width) solid var(--color-border);
 		border-radius: var(--radius);
 	}
 
 	.scrub-input::-moz-range-track {
-		height: 6px;
+		height: var(--fader-track);
 		background: var(--color-surface-active);
 		border: var(--border-width) solid var(--color-border);
 		border-radius: var(--radius);
 	}
 
+	/* Same track/thumb family as LinearPot's horizontal orientation: thumb width is the short
+	   dimension, height the long one, centered on the track via (track - thumb-long) / 2. */
 	.scrub-input::-webkit-slider-thumb {
 		appearance: none;
-		width: 11px;
-		height: 22px;
-		margin-top: -8px;
+		width: var(--fader-thumb-short);
+		height: var(--fader-thumb-long);
+		margin-top: calc((var(--fader-track) - var(--fader-thumb-long)) / 2);
 		background: var(--color-accent);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 	}
 
 	.scrub-input::-moz-range-thumb {
-		width: 11px;
-		height: 22px;
+		width: var(--fader-thumb-short);
+		height: var(--fader-thumb-long);
 		background: var(--color-accent);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
@@ -203,10 +218,13 @@
 	}
 
 	.readouts {
+		box-sizing: border-box;
+		flex-shrink: 0;
 		display: flex;
-		flex-wrap: wrap;
 		align-items: baseline;
-		gap: var(--space-3);
+		height: var(--readout-line);
+		overflow: hidden;
+		gap: var(--space-2);
 		font-family: var(--font-mono);
 		font-size: var(--font-size-sm);
 		color: var(--color-text);
@@ -220,8 +238,16 @@
 		color: var(--color-text-muted);
 	}
 
+	/* Out of flow, like RotaryPot's .error: a status message must never change the module's
+	   footprint (00-conventions.md §5.4). Still in the a11y tree via aria-describedby — only its
+	   visual position moved below the control. */
 	.help {
-		margin: 0;
+		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
+		z-index: 2;
+		margin: var(--pad-1) 0 0;
 		font-size: var(--font-size-sm);
 		color: var(--color-text-muted);
 	}

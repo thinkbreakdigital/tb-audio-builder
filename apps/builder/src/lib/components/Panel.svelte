@@ -37,7 +37,7 @@
 		align-items: center;
 		justify-content: space-between;
 		height: var(--control-height);
-		padding: 0 var(--space-3);
+		padding: 0 var(--pad-3);
 		border-bottom: var(--border-width) solid var(--color-border);
 	}
 
@@ -53,6 +53,6 @@
 	}
 
 	.panel-body {
-		padding: var(--space-3);
+		padding: var(--pad-3);
 	}
 </style>

@@ -81,7 +81,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				guidance:
 					'Concentric pot in the guitar-pedal idiom: an outer ring and an inner disc sharing one footprint, with a paired label reading OUTER —o— INNER. Only pair parameters of the same family — filter with filter, time with time — because a cross-family pair reads as an accident. Built as two RotaryPot instances composed into one dial, never as a second rotary implementation. Removes about seven dials from the instrument editor and master strip.',
 				variants: [
-					'Ring thickness is the critical dimension: a thin outer ring is a poor pointer target at 200% zoom, which both phases require.',
+					'Ring thickness is the critical dimension: a thin outer ring is a poor pointer target at 200% zoom, which both phases require. The 96x96 module (00-conventions.md §5.4) puts a 48px outer ring around a 28px inner disc, a 10px ring.',
 					'Two native ranges, two real labels. The two numeric fields are where the space saving partly returns — resolve with one shared value line (1.2kHz / 4.0Q) that expands on focus, or accept the fields side by side.',
 					'Retires two approved two-member banks (vibrato Rate/Depth, oscillator Start/End) by showing both values at once instead of one. That edits the exact bank list in 09B §4.3 and is a spec amendment, not an implementation detail.',
 					'Ruled out for semitone + fine tune: both already live in the three-way O/S/F bank, and pairing them concentrically would either break that bank or give the same value two controls, which 09B acceptance criterion 2 forbids.',
@@ -97,7 +97,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '10B §4.4–4.5 · conventions §5.2',
 				guidance:
-					'Vertical travel instead of rotation; everything else matches RotaryPot — same revealed number field, double-click reset, keyboard, live/commit, and error behavior. Channel volume is always a fader and is never banked with pan. Design the throw length so a 16-channel rail still fits at 1024×640.',
+					'Vertical travel instead of rotation; everything else matches RotaryPot — same revealed number field, double-click reset, keyboard, live/commit, and error behavior. Channel volume is always a fader and is never banked with pan. The throw is 7 bands, 224px, declared once as --mixer-level-rail-height, so a 16-channel rail still fits at 1024×640.',
 				variants: [
 					'Master volume — 10B §4.5 only says "dedicated" without naming the form. Recommendation: the same fader, so Master reads as a strip.',
 					'Labelled Volume everywhere in the UI, because on a board Gain is the input trim and Volume is the fader. The schema keeps mix.gain and master.gain untouched — this is a display name only, and a deliberate deviation from the literal wording of 10B §4.3.'
@@ -132,7 +132,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '09B §4.3 · conventions §5.2',
 				guidance:
-					"Named native radio group in a <fieldset>, about 1.25rem high, with a sliding or highlighted active segment — the small toggle family, not the large ROI selector. The active parameter's full name stays visible next to it. Reduced motion makes the indicator instant. Selecting a segment only swaps which value the pot edits.",
+					"Named native radio group in a <fieldset>, a 24px track centred in one 32px band (00-conventions.md §5.4), with a sliding or highlighted active segment — the small toggle family, not the large ROI selector. The active parameter's full name stays visible next to it. Reduced motion makes the indicator instant. Selecting a segment only swaps which value the pot edits.",
 				variants: [
 					'Banked pot — the dominant layout: this switch sits directly above one shared RotaryPot. Design the pair together; there is no separate component for it.',
 					'Two-position with full words for Mono / Poly, rather than initials. Recommended over a "Polyphonic" checkbox, which hides the mono state.',
@@ -184,7 +184,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '09B §4.4',
 				guidance:
-					'Compact native select, styled for the one- or two-character SVG/glyph labels used by most callers. Keep the option labels and accessible name intact; SegmentSwitch stays reserved for bank selection and Mono/Poly.'
+					'Compact native select, styled for the one- or two-character SVG/glyph labels used by most callers. Keep the option labels and accessible name intact; SegmentSwitch stays reserved for bank selection and Mono/Poly. Once WaveformIcon exists, the Wave options render it in place of the current plain characters.'
 			},
 			{
 				slug: 'latching-switch',
@@ -299,7 +299,7 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				transport: [],
 				source: '10B §4.3',
 				guidance:
-					'The core density decision: one compact column holding six things, repeated up to sixteen times. Channel and Master share one fixed strip height so Master can remain pinned beside the rail. A clickable current-volume dB readout sits above the fader/meter rail and resets a latched clip; it turns red plus gains an explicit marker when clipped. Never exposes role, reset, waveform, envelope, filter, or preset controls. Fix the column width here and everything else follows.',
+					'The core density decision: one compact column holding six things, repeated up to sixteen times. Channel and Master share one fixed strip height so Master can remain pinned beside the rail. A clickable current-volume dB readout sits above the fader/meter rail and resets a latched clip; it turns red plus gains an explicit marker when clipped. Never exposes role, reset, waveform, envelope, filter, or preset controls. The column is 4 modules, 128px, by 12 bands, 384px; Master is 5 modules, 160px, at the same height.',
 				variants: [
 					'The channel name is itself the navigation control — clicking it selects the channel and opens Instrument, so it needs an interactive affordance while still reading as a title.'
 				]
@@ -464,6 +464,57 @@ export const UI_ELEMENT_CATALOG: readonly UiElementGroup[] = [
 				source: 'phase 04',
 				guidance:
 					'Already built. Listed so the empty Mixer and empty Instrument views are designed rather than left as a bare sentence.'
+			}
+		]
+	},
+	{
+		id: 'icons-and-glyphs',
+		title: 'Icons and glyphs',
+		rows: [
+			{
+				slug: 'waveform-icon',
+				name: 'WaveformIcon',
+				file: 'components/icons/ (new — one file per waveform, listed below)',
+				instrument: ['Oscillator waveform (SelectorSwitch)'],
+				mixer: [],
+				transport: [],
+				source: 'InstrumentChannelMockupAdjustment.md — Oscillator',
+				guidance:
+					"Five waveform glyphs, each a stroke-only curve in currentColor so it inherits the active/inactive color a SegmentSwitch or SelectorSwitch already uses. SelectorSwitch's Wave specimen currently shows three of the five as bare characters (~, □, △) and has no Saw or Pulse option at all. Pulse has no matching value in PitchedWaveform (sine | triangle | square | sawtooth) yet, so its icon can exist ahead of that schema change. Each glyph is its own component, not one component switched by a prop and not a static image asset — currentColor theming needs inline SVG.",
+				variants: [
+					'SineIcon.svelte',
+					'TriangleIcon.svelte',
+					'SquareIcon.svelte',
+					'SawIcon.svelte',
+					'PulseIcon.svelte'
+				]
+			},
+			{
+				slug: 'filter-type-icon',
+				name: 'FilterTypeIcon',
+				file: 'components/icons/ (new — one file per filter type, listed below)',
+				instrument: ['Filter type (SegmentSwitch: Lowpass / Bandpass / Highpass)'],
+				mixer: [],
+				transport: [],
+				source: 'InstrumentChannelMockupAdjustment.md — Filter',
+				guidance:
+					'Three filter-response glyphs, already drawn as stroke-only curves in currentColor in InstrumentChannelMockupAdjustment.md (Filter section), sized to the SegmentSwitch --segment-width: 16px track inside its 24px band. Each glyph is its own component, matching the waveform icons above.',
+				variants: ['LowpassIcon.svelte', 'BandpassIcon.svelte', 'HighpassIcon.svelte']
+			},
+			{
+				slug: 'dual-pot-label-icon',
+				name: 'DualPotLabelIcon',
+				file: 'components/icons/DualPotLabelIcon.svelte (new — extracted from DualRotaryPot.svelte)',
+				instrument: [
+					'Filter cutoff + resonance',
+					'Noise layer cutoff + resonance',
+					'Oscillator start + end frequency'
+				],
+				mixer: ['Master compressor threshold + ratio', 'Master compressor attack + release'],
+				transport: [],
+				source: 'DualRotaryPot.svelte (existing)',
+				guidance:
+					'Already built, but only as inline markup inside DualRotaryPot.svelte (lines 264–280): the semicircle-plus-dot glyph connecting the outer and inner labels. Copy it into its own component and have DualRotaryPot import it, rather than leaving the path data living only inside that one file.'
 			}
 		]
 	}

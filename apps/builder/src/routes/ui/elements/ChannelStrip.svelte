@@ -49,9 +49,9 @@
 				decimals={0}
 				showLabel={false}
 				showReadout={false}
-				shaftHeight="100%"
+				shaftHeight="var(--mixer-level-rail-height)"
 			/>
-			<LevelMeter levelDb={volumeDb} height="100%" showScale />
+			<LevelMeter levelDb={volumeDb} height="var(--mixer-level-rail-height)" showScale />
 		</div>
 	</div>
 
@@ -73,22 +73,39 @@
 
 <style>
 	.channel-strip {
+		/* Border-box height: 1 + 7 slack + 24 + 24 + 32 + 224 + 32 + 32 + 7 slack + 1 = 384.
+		   The edge tracks absorb the remainder so the strip does not invent off-scale padding. */
 		display: grid;
 		justify-items: center;
-		gap: var(--space-2);
-		width: 116px;
+		align-items: start;
+		gap: 0;
+		width: var(--mod-4);
 		height: var(--mixer-strip-height);
 		box-sizing: border-box;
-		grid-template-rows: auto auto minmax(0, 1fr) auto auto;
-		padding: var(--space-2);
+		grid-template-rows:
+			minmax(0, 1fr)
+			calc(var(--band-1) - var(--u))
+			calc(var(--band-1) - var(--u))
+			calc(var(--band-1) + var(--mixer-level-rail-height))
+			var(--band-1)
+			var(--band-1)
+			minmax(0, 1fr);
+		padding: 0;
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-background);
 	}
 
+	.channel-strip::before,
+	.channel-strip::after {
+		content: '';
+	}
+
 	.channel-name {
-		max-width: 100%;
-		padding: 0;
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		padding: 0 var(--pad-2);
 		border: 0;
 		background: none;
 		color: var(--color-text);
@@ -103,36 +120,39 @@
 	}
 
 	.role {
+		box-sizing: border-box;
+		display: flex;
+		align-items: center;
+		height: 100%;
+		padding: 0 var(--pad-1);
+		border: var(--border-width) solid var(--color-border);
+		border-radius: var(--radius);
 		font-family: var(--font-mono);
 		font-size: var(--font-size-sm);
 		color: var(--color-text-muted);
 	}
 
-	.role {
-		padding: 0 var(--space-1);
-		border: var(--border-width) solid var(--color-border);
-		border-radius: var(--radius);
-	}
-
 	.level-section {
 		display: grid;
-		grid-template-rows: auto minmax(0, 1fr);
+		grid-template-rows: var(--band-1) var(--mixer-level-rail-height);
 		justify-items: center;
+		width: 100%;
+		height: 100%;
 		min-height: 0;
-		gap: var(--space-1);
+		gap: 0;
 	}
 
 	.level-rail {
 		display: flex;
+		justify-content: center;
 		align-items: stretch;
-		gap: var(--space-2);
-		height: auto;
+		gap: 0;
+		width: 100%;
+		height: var(--mixer-level-rail-height);
 		min-height: 0;
 	}
 
-	@media (max-width: 640px) {
-		.channel-strip {
-			width: 128px;
-		}
+	.level-rail > :global(*) {
+		min-width: 0;
 	}
 </style>

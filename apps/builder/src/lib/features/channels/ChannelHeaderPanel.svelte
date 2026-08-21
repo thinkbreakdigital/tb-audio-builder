@@ -157,14 +157,14 @@
 
 <style>
 	:global(.channel-header-panel) {
-		margin-bottom: var(--space-3);
+		margin-bottom: var(--space-4);
 	}
 
 	.fields {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: flex-end;
-		gap: var(--space-3);
+		gap: var(--space-4);
 	}
 
 	.name-field {
@@ -175,8 +175,8 @@
 		display: grid;
 		grid-template-columns: max-content 1fr;
 		row-gap: var(--space-1);
-		column-gap: var(--space-3);
-		margin: var(--space-3) 0 0;
+		column-gap: var(--space-4);
+		margin: var(--space-4) 0 0;
 	}
 
 	.row {
@@ -193,6 +193,6 @@
 	}
 
 	.actions {
-		margin-top: var(--space-3);
+		margin-top: var(--space-4);
 	}
 </style>

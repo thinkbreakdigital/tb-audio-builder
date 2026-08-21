@@ -17,7 +17,7 @@
 		gap: var(--space-2);
 		min-height: var(--control-height);
 		align-items: center;
-		padding: 0 var(--space-3);
+		padding: 0 var(--space-4);
 		border-top: var(--border-width) solid var(--color-border);
 		font-size: var(--font-size-sm);
 		color: var(--color-text);

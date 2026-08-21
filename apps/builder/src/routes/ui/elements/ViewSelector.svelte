@@ -1,5 +1,14 @@
 <script lang="ts">
-	/** The application's two top-level views, represented locally in the catalog. */
+	/**
+	 * The application's two top-level views, represented locally in the catalog.
+	 *
+	 * Modular footprint (00-conventions.md §5.4): each tab is min-width var(--mod-2) (64px), height
+	 * one band (var(--control-height), 32px), and the tabs butt together at gap: 0. Padding is baked
+	 * into each tab from the default control-module scale (--pad-2, 8px). The second and later tabs
+	 * drop their inline-start border and add that 1px to their inline-start padding — the same
+	 * butted-seam rule LatchingSwitch uses — so a run of tabs reads as one 1px border between them,
+	 * not two.
+	 */
 	type View = 'instrument' | 'mixer';
 	const uid = $props.id();
 	let selected = $state<View>('instrument');
@@ -43,18 +52,17 @@
 
 	[role='tablist'] {
 		display: inline-flex;
-		width: fit-content;
-		border: var(--border-width) solid var(--color-border-strong);
-		border-radius: var(--radius);
-		background: var(--color-background);
+		gap: 0;
 	}
 
 	button {
+		box-sizing: border-box;
+		min-width: var(--mod-2);
 		height: var(--control-height);
-		padding: 0 var(--space-3);
-		border: 0;
+		padding: 0 var(--pad-2);
+		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: 0;
-		background: transparent;
+		background: var(--color-background);
 		color: var(--color-text-muted);
 		font: inherit;
 		font-weight: 700;
@@ -64,8 +72,24 @@
 			color 100ms;
 	}
 
+	/* Run start: keeps its full border and the outer-left corner radius. */
+	button:first-child {
+		border-start-start-radius: var(--radius);
+		border-end-start-radius: var(--radius);
+	}
+
+	/* Butted seam (00-conventions.md §5.4): every tab after the first drops its inline-start border
+	   and adds that 1px to its inline-start padding, so the run's total width is unchanged and the
+	   shared edge reads as one 1px line rather than two. */
 	button + button {
-		border-left: var(--border-width) solid var(--color-border-strong);
+		border-inline-start-width: 0;
+		padding-inline-start: calc(var(--pad-2) + 1px);
+	}
+
+	/* Run end: keeps the outer-right corner radius. */
+	button:last-child {
+		border-start-end-radius: var(--radius);
+		border-end-end-radius: var(--radius);
 	}
 
 	button[aria-selected='true'] {
@@ -92,13 +116,6 @@
 	[role='tabpanel'] {
 		color: var(--color-text-muted);
 		font-family: var(--font-mono);
-	}
-
-	@media (max-width: 640px) {
-		button {
-			min-height: 36px;
-			padding: 0 var(--space-4);
-		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

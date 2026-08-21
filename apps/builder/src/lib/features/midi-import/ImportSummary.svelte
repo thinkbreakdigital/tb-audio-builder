@@ -74,7 +74,7 @@
 		display: grid;
 		grid-template-columns: max-content 1fr;
 		row-gap: var(--space-1);
-		column-gap: var(--space-3);
+		column-gap: var(--space-4);
 		margin: 0;
 	}
 

@@ -110,7 +110,7 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: var(--space-3);
+		gap: var(--space-4);
 		padding: var(--space-6);
 		border: var(--border-width) dashed var(--color-border-strong);
 		border-radius: var(--radius);

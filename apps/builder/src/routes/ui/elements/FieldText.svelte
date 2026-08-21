@@ -8,6 +8,9 @@
 	 * font-size/line-height — only color, weight, and the marker fill change between them. That is
 	 * what keeps this element's own box the same size whether the tone flips, or a FieldText mounts
 	 * where none was showing before, so the control it describes never resizes or shifts underneath it.
+	 *
+	 * Sizing (00-conventions.md §5.4): max-width var(--mod-7), 224px, so a long message wraps rather
+	 * than pushing the module past a grid width. The 8px marker dot is unchanged.
 	 */
 	export type FieldTextTone = 'help' | 'error';
 
@@ -41,7 +44,7 @@
 		align-items: center;
 		gap: var(--space-1);
 		margin: 0;
-		max-width: 220px;
+		max-width: var(--mod-7);
 		padding: var(--space-1) 0;
 		/* Same border width in both tones (transparent for help) — see file header. */
 		border: var(--border-width) solid transparent;

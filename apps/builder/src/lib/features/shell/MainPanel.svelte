@@ -102,16 +102,20 @@
 		background: var(--color-background);
 	}
 
+	/* One band. The border-bottom is absorbed inside height (border-box), not added on top,
+	   so .tab-bar lands on 32px rather than 33px. .tab has no explicit height of its own;
+	   it stretches (the flex default) to fill the bar's border-box exactly, staying inside
+	   that same 32px instead of overflowing it. */
 	.tab-bar {
 		display: flex;
 		flex: 0 0 auto;
+		height: var(--control-height);
 		border-bottom: var(--border-width) solid var(--color-border);
 		background: var(--color-surface);
 	}
 
 	.tab {
-		height: var(--control-height);
-		padding: 0 var(--space-3);
+		padding: 0 var(--space-4);
 		border: 0;
 		border-right: var(--border-width) solid var(--color-border);
 		border-bottom: 2px solid transparent;
@@ -135,7 +139,7 @@
 	.tab-body {
 		flex: 1;
 		min-height: 0;
-		padding: var(--space-3);
+		padding: var(--space-4);
 		overflow-y: auto;
 	}
 

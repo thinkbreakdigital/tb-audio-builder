@@ -29,16 +29,79 @@
 
 	--space-1: 4px;
 	--space-2: 8px;
-	--space-3: 12px;
 	--space-4: 16px;
 	--space-5: 24px;
 	--space-6: 32px;
 
 	--radius: 3px;
-	--control-height: 28px;
+	--control-height: 32px;
 	--border-width: 1px;
+
+	/* Modular sizing grid. Base unit U = 8px. Module widths and height bands are
+	   multiples of 32px. Modules butt together with gap: 0 and every module bakes its
+	   own padding into its border-box footprint. See §5.4. */
+	--u: 8px;
+
+	--mod-1: 32px;
+	--mod-2: 64px;
+	--mod-3: 96px;
+	--mod-4: 128px;
+	--mod-5: 160px;
+	--mod-6: 192px;
+	--mod-7: 224px;
+	--mod-8: 256px;
+	--mod-9: 288px;
+	--mod-10: 320px;
+	--mod-12: 384px;
+	--mod-13: 416px;
+	--mod-16: 512px;
+
+	--band-1: 32px;
+	--band-2: 64px;
+	--band-3: 96px;
+	--band-4: 128px;
+	--band-5: 160px;
+	--band-6: 192px;
+	--band-7: 224px;
+	--band-12: 384px;
+
+	/* Sub-band text rows. The only vertical values below one band allowed inside a module. */
+	--label-line: 16px;
+	--readout-line: 16px;
+
+	/* Module padding scale. Baked into the footprint, never added to it. */
+	--pad-1: 4px;
+	--pad-2: 8px;
+	--pad-3: 16px;
+
+	--dial-size: 48px;
+	--dial-size-compact: 32px;
+	--dial-indicator-length: 20px;
+	--dial-indicator-length-compact: 12px;
+
+	--dual-outer-diameter: 48px;
+	--dual-inner-diameter: 28px;
+	--dual-outer-indicator: 20px;
+	--dual-inner-indicator: 12px;
+
+	--segment-width: 16px;
+	--segment-width-word: 40px;
+	--segment-height: 24px;
+
+	--fader-track: 8px;
+	--fader-thumb-long: 24px;
+	--fader-thumb-short: 12px;
+	--fader-hit-width: 32px;
+
+	--meter-width: 16px;
+	--meter-scale-width: 32px;
+
+	--shell-bar-height: 64px;
+	--shell-sidebar-width: 256px;
+	--mixer-strip-width: 128px;
+	--mixer-master-strip-width: 160px;
 	--mixer-strip-height: 384px;
-	--mixer-level-rail-height: 144px;
+	--mixer-level-rail-height: 224px;
 
 	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

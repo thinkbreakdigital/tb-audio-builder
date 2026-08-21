@@ -36,7 +36,7 @@
 <style>
 	button {
 		height: var(--control-height);
-		padding: 0 var(--space-3);
+		padding: 0 var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-surface);
@@ -58,8 +58,8 @@
 		outline-offset: 2px;
 	}
 	.dialog {
-		width: min(420px, calc(100vw - var(--space-4)));
-		max-height: min(430px, calc(100vh - var(--space-4)));
+		width: min(var(--mod-13), calc(100vw - var(--space-4)));
+		max-height: min(calc(var(--band-7) * 2), calc(100vh - var(--space-4)));
 		padding: 0;
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
@@ -71,9 +71,12 @@
 	}
 	header,
 	footer {
-		padding: var(--space-3) var(--space-4);
+		padding: var(--pad-3);
 	}
 	header {
+		/* Two bands: the header carries a title line and a subtitle line, so one band
+		   cannot hold it. 64 keeps the dialog's rows on the grid (00-conventions.md §5.4). */
+		min-height: var(--band-2);
 		border-bottom: var(--border-width) solid var(--color-border);
 	}
 	h2,
@@ -92,24 +95,15 @@
 		margin-top: var(--space-1);
 	}
 	.dialog-body {
-		max-height: 220px;
+		max-height: var(--band-7);
 		overflow: auto;
-		padding: var(--space-4);
+		padding: var(--pad-3);
 	}
 	footer {
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--space-2);
 		border-top: var(--border-width) solid var(--color-border);
-	}
-	@media (max-width: 640px) {
-		.dialog {
-			width: calc(100vw - var(--space-4));
-		}
-		header,
-		footer {
-			padding: var(--space-3);
-		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		button {

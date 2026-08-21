@@ -16,7 +16,7 @@
 <style>
 	.toggle {
 		height: var(--control-height);
-		padding: 0 var(--space-2);
+		padding: 0 var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-background);

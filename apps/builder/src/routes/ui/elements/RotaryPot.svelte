@@ -203,25 +203,37 @@
 
 <style>
 	.pot {
+		box-sizing: border-box;
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: var(--space-1);
-		/* min-width, not a fixed width: the label and value readout size to their own content, so a
-		   longer custom label or value grows the pot instead of visually overflowing it. */
-		min-width: 84px;
+		gap: 0;
+		/* Declared footprint, not a min-width: label 16 + dial 48 + readout band 32 = 96 tall,
+		   64 wide (00-conventions.md §5.4). The 48px dial is narrower than the 64px module, so
+		   centering it already leaves the 8px inset on each side — no horizontal padding needed. */
+		width: var(--mod-2);
+		height: var(--band-3);
 		font-family: var(--font-sans);
 		font-size: var(--font-size-sm);
 		color: var(--color-text);
 	}
 
 	.pot.compact {
-		min-width: 62px;
+		/* Compact: label 16 + dial 32 + readout 16 = 64 tall, same 64-wide module. */
+		height: var(--band-2);
 	}
 
 	label {
+		flex-shrink: 0;
+		width: 100%;
+		height: var(--label-line);
+		line-height: var(--label-line);
+		overflow: hidden;
 		color: var(--color-text-muted);
 		text-align: center;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	/* Fixed height reserves the value readout's space whether it's showing plain text or the
@@ -229,10 +241,15 @@
 	.value-slot {
 		position: relative;
 		display: flex;
+		flex-shrink: 0;
 		align-items: center;
 		justify-content: center;
 		width: 100%;
 		height: var(--control-height);
+	}
+
+	.compact .value-slot {
+		height: var(--readout-line);
 	}
 
 	.visually-hidden {
@@ -268,20 +285,23 @@
 		border-color: var(--color-danger);
 	}
 
-	/* Specimen dial: 56px, matching the ~120x96px catalog cell this sits in. */
+	/* Dial size is set by the production instrument panel, not this catalog cell — see
+	   00-conventions.md §5.4. Default band: label 16 + dial 48 + readout 32 = 96. Compact band:
+	   label 16 + dial 32 + readout 16 = 64. */
 	.dial {
 		position: relative;
-		width: 56px;
-		height: 56px;
+		flex-shrink: 0;
+		width: var(--dial-size);
+		height: var(--dial-size);
 	}
 
 	.compact .dial {
-		width: 40px;
-		height: 40px;
+		width: var(--dial-size-compact);
+		height: var(--dial-size-compact);
 	}
 
 	.compact .indicator {
-		height: 14px;
+		height: var(--dial-indicator-length-compact);
 	}
 
 	.range-input {
@@ -316,7 +336,7 @@
 		bottom: 50%;
 		left: 50%;
 		width: 2px;
-		height: 20px;
+		height: var(--dial-indicator-length);
 		margin-left: -1px;
 		background: var(--color-text);
 		transform-origin: bottom center;
@@ -355,9 +375,18 @@
 		}
 	}
 
+	/* Out of flow, like SegmentSwitch's .help: a validation message must never change the
+	   module's footprint (00-conventions.md §5.4). Still in the a11y tree and wired through the
+	   same aria-describedby as before — only its visual position moved. */
 	.error {
-		margin: 0;
-		max-width: 84px;
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		z-index: 2;
+		width: max-content;
+		max-width: var(--mod-3);
+		margin: var(--pad-1) 0 0;
+		transform: translateX(-50%);
 		color: var(--color-danger);
 		text-align: center;
 	}

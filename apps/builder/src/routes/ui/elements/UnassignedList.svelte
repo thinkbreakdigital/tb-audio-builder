@@ -30,7 +30,7 @@
 
 <style>
 	.unassigned-list {
-		width: min(100%, 300px);
+		width: min(100%, var(--mod-10));
 		border: var(--border-width) solid var(--color-border);
 		border-radius: var(--radius);
 		background: var(--color-background);
@@ -42,7 +42,7 @@
 		justify-content: space-between;
 		gap: var(--space-2);
 		min-height: var(--control-height);
-		padding: 0 var(--space-2);
+		padding: 0 var(--pad-2);
 		border-bottom: var(--border-width) solid var(--color-border);
 		color: var(--color-text-muted);
 	}
@@ -72,7 +72,7 @@
 		gap: var(--space-2);
 		width: 100%;
 		min-height: var(--control-height);
-		padding: var(--space-1) var(--space-2);
+		padding: var(--pad-1) var(--pad-2);
 		border: 0;
 		border-bottom: var(--border-width) solid var(--color-border);
 		border-left: 2px solid transparent;
@@ -104,15 +104,6 @@
 	button:focus-visible {
 		outline: 2px solid var(--color-accent);
 		outline-offset: -2px;
-	}
-
-	@media (max-width: 640px) {
-		.unassigned-list {
-			width: 100%;
-		}
-		button {
-			min-height: 36px;
-		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

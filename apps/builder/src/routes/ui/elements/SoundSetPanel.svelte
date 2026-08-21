@@ -34,8 +34,8 @@
 
 <style>
 	.sound-set-panel {
-		width: min(290px, 100%);
-		padding: var(--space-3);
+		width: min(var(--mod-9), 100%);
+		padding: var(--pad-3);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-background);
@@ -56,7 +56,7 @@
 	}
 	label {
 		display: block;
-		margin-top: var(--space-3);
+		margin-top: var(--space-4);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}
@@ -74,11 +74,11 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-2);
-		margin-top: var(--space-3);
+		margin-top: var(--space-4);
 	}
 	button {
-		height: 26px;
-		padding: 0 var(--space-2);
+		height: var(--control-height);
+		padding: 0 var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-surface);
@@ -110,14 +110,6 @@
 		margin-top: var(--space-2);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
-	}
-	@media (max-width: 640px) {
-		.sound-set-panel {
-			width: 100%;
-		}
-		.actions button {
-			height: var(--control-height);
-		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		button {

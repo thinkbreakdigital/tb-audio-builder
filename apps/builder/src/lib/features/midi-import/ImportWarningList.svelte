@@ -35,14 +35,14 @@
 
 <style>
 	.warnings {
-		margin-top: var(--space-3);
+		margin-top: var(--space-4);
 		border: var(--border-width) solid var(--color-border);
 		border-radius: var(--radius);
 		background: var(--color-background);
 	}
 
 	summary {
-		padding: var(--space-2) var(--space-3);
+		padding: var(--space-2) var(--space-4);
 		font-weight: 600;
 		cursor: pointer;
 	}

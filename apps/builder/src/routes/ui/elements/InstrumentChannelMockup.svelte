@@ -9,6 +9,7 @@
 
 	let filterEnabled = $state(true);
 	let vibratoEnabled = $state(false);
+	let polyphonic = $state(true);
 </script>
 
 <section class="instrument-pane" aria-labelledby="instrument-pane-title">
@@ -102,13 +103,7 @@
 		<section class="control-section" aria-labelledby="voices-title">
 			<h3 id="voices-title">Voices</h3>
 			<div class="control-row">
-				<SegmentSwitch
-					legend="Mode"
-					segments={[
-						{ value: 'mono', initial: 'MONO', label: 'Mono' },
-						{ value: 'poly', initial: 'POLY', label: 'Poly' }
-					]}
-				/>
+				<ToggleSwitch label="Poly" bind:checked={polyphonic} />
 				<RotaryPot
 					label="Max voices"
 					value={8}
@@ -181,21 +176,38 @@
 	}
 
 	.control-section {
+		/* Exact outer footprint: 224x128. The 96px control row stays start-aligned and the grid row
+		   absorbs the six vertical pixels left after border, padding, and the 16px heading. */
+		box-sizing: border-box;
 		display: grid;
-		gap: var(--space-1);
-		flex: 0 0 184px;
+		grid-template-rows: var(--label-line) minmax(0, 1fr);
+		gap: 0;
+		flex: 0 0 var(--mod-7);
 		min-width: 0;
-		padding: var(--space-2);
+		height: var(--band-4);
+		padding: var(--pad-1) 0;
 		border: var(--border-width) solid var(--color-border);
 		border-radius: 0;
 		background: var(--color-surface);
 	}
 
+	.control-section + .control-section {
+		border-inline-start-width: 0;
+		padding-inline-start: var(--border-width);
+	}
+
 	.control-row {
 		display: flex;
 		flex-wrap: nowrap;
-		align-items: center;
-		gap: var(--space-2);
+		align-items: start;
+		gap: 0;
+		width: 100%;
+		height: var(--band-3);
+		min-width: 0;
+	}
+
+	.control-row > :global(*) {
+		min-width: 0;
 	}
 
 	@media (max-width: 640px) {

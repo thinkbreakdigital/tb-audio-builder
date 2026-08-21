@@ -113,9 +113,12 @@
 	.readout {
 		display: inline-block;
 		box-sizing: border-box;
+		/* One band tall regardless of format (00-conventions.md §5.4). */
+		height: var(--band-1);
 		color: var(--color-text);
 		font-family: var(--font-mono);
 		font-size: var(--font-size-base);
+		line-height: var(--band-1);
 		text-align: right;
 		/* Locks per-glyph width so a change like 9 -> 10, or 64.250 -> 104.250, never reflows
 		   neighboring controls — only the digits change, the box does not. */
@@ -149,29 +152,31 @@
 		text-underline-offset: 2px;
 	}
 
-	/* Per-format min-width: reserves space for the longest realistic string in that format, so the
-	   readout's own box stays put as digits change within it. */
+	/* Per-format width: fixed module footprint, not a min-width, so the readout's own box stays put
+	   as digits change within it (00-conventions.md §5.4). Reserves space for the longest realistic
+	   string in that format: value (7ch) and pan (5ch) fit --mod-2 (64px); note (9ch), tempo (9ch),
+	   and ticks (13ch) fit --mod-3 (96px); time (19ch, "m:ss.mmm / m:ss.mmm") fits --mod-5 (160px). */
 	.format-value {
-		min-width: 7ch;
+		width: var(--mod-2);
 	}
 
 	.format-note {
-		min-width: 8ch;
+		width: var(--mod-3);
 	}
 
 	.format-pan {
-		min-width: 5ch;
+		width: var(--mod-2);
 	}
 
 	.format-time {
-		min-width: 19ch;
+		width: var(--mod-5);
 	}
 
 	.format-tempo {
-		min-width: 9ch;
+		width: var(--mod-3);
 	}
 
 	.format-ticks {
-		min-width: 13ch;
+		width: var(--mod-3);
 	}
 </style>

@@ -167,7 +167,7 @@
 	}
 
 	table {
-		min-width: 1200px;
+		min-width: calc(var(--mod-16) + var(--mod-16) + var(--mod-8));
 		border-collapse: collapse;
 		font-size: var(--font-size-sm);
 	}
@@ -190,11 +190,11 @@
 	}
 
 	.slot-head {
-		width: 140px;
+		width: var(--mod-16);
 	}
 
 	.name-head {
-		width: 180px;
+		width: var(--mod-6);
 	}
 
 	.spec-head {
@@ -213,12 +213,14 @@
 	}
 
 	.slot-box {
+		box-sizing: border-box;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 120px;
-		min-height: 96px;
-		padding: var(--space-2);
+		width: max-content;
+		min-width: var(--mod-4);
+		min-height: var(--band-3);
+		padding: var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-background);
@@ -274,13 +276,15 @@
 	}
 
 	.instrument-preview {
-		min-width: 1200px;
+		min-width: calc(
+			var(--mod-7) + var(--mod-7) + var(--mod-7) + var(--mod-7) + var(--mod-7) + var(--mod-2)
+		);
 		padding: var(--space-6) var(--space-4);
 		border-top: var(--border-width) solid var(--color-border-strong);
 	}
 
 	.preview-heading {
-		margin-bottom: var(--space-3);
+		margin-bottom: var(--pad-3);
 	}
 	.preview-heading p {
 		margin: 0 0 var(--space-1);

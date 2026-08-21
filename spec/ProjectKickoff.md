@@ -195,7 +195,7 @@ through a labelled segmented selector when this reduces panel size without mixin
 
 * Pitched tuning uses one stepped knob selected by `O` (Octave), `S` (Semitone), or `F` (Fine).
 * Amplitude envelopes use one smooth knob selected by `A`, `D`, `S`, or `R`.
-* Pitched vibrato may bank Rate and Depth; percussion oscillator pitch may bank Start and End.
+* Percussion oscillator pitch may bank Start and End.
 * Filters, channel gain/pan, layer gains, root note, master gain, and compressor parameters remain
   dedicated controls.
 
@@ -205,6 +205,13 @@ use familiar previous/next arrows plus explicit Browse and Save As actions; icon
 visible text or unambiguous accessible names and help text. Factory presets cannot be overwritten.
 Compact mixer strips use a vertical gain fader, a pan knob, text `MUTE`/`SOLO` toggles, a meter,
 and textual audibility. The workspace MUST remain usable at 1024×640 and at 200% zoom.
+
+All workspace controls sit on a modular sizing grid: an 8px base unit, module widths in multiples of
+32px, and 32px height bands, with padding baked into each module so runs of controls tile with no
+leftover pixels between them. The goal is that instrument modules assemble like hardware panel
+blocks rather than needing per-screen pixel nudging. The normative rules are in
+`spec/implementation/00-conventions.md` §5.4. The 1024×640 and 200% zoom requirement above is
+unchanged; §5.4 states which surfaces tile exactly at that viewport and which scroll.
 
 Implementation is deliberately split at the rendering boundary. Phase 09A's non-rendering
 instrument/preset foundation is delivered; phase 10A's headless transport/global-Mixer foundation
@@ -452,20 +459,13 @@ Each pitched channel MUST provide the following controls.
 * Cutoff frequency
 * Resonance
 
-### 10.4 Modulation
-
-* Vibrato enabled
-* Vibrato rate
-* Vibrato depth
-* Pitch-bend range
-
-### 10.5 Voice behavior
+### 10.4 Voice behavior
 
 * Monophonic or polyphonic
 * Maximum polyphony
 * Voice-stealing mode
 
-### 10.6 Mixing
+### 10.5 Mixing
 
 * Channel volume
 * Pan

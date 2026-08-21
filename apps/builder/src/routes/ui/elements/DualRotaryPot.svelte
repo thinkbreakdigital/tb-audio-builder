@@ -96,12 +96,13 @@
 	const outerErrorId = `${uid}-outer-error`;
 	const innerErrorId = `${uid}-inner-error`;
 
-	/* Outer 56px matches RotaryPot's dial exactly, so the two read as one family. Inner disc 34px
-	   leaves an 11px ring band (56 - 34 = 22, halved). That is narrower than the 16px this file
-	   originally settled on as the minimum reliable pointer target at 200% zoom — flagged in the
-	   report rather than silently reverting the outer diameter, per the coordinator's instruction. */
-	const OUTER_DIAMETER = 56;
-	const INNER_DIAMETER = 34;
+	/* Outer 48px matches RotaryPot's default dial exactly, so the two read as one family. Inner
+	   disc 28px leaves a 10px ring band (48 - 28 = 20, halved) — the 96x96 module's canonical
+	   footprint per 00-conventions.md §5.4. These mirror the --dual-outer-diameter /
+	   --dual-inner-diameter tokens in tokens.css; kept as JS constants (not read from CSS) because
+	   they also drive the outer/inner hit-area math below, not just paint. */
+	const OUTER_DIAMETER = 48;
+	const INNER_DIAMETER = 28;
 
 	let outerFieldOpen = $state(false);
 	let innerFieldOpen = $state(false);
@@ -261,22 +262,22 @@
 			read off the connection rather than guessed. The arc is deliberately open on the right so
 			the inner disc's lead line can exit through the gap.
 		-->
-		<svg class="glyph" width="19.6" height="12" viewBox="0 0 19.6 12" aria-hidden="true">
+		<svg class="glyph" width="16" height="12" viewBox="0 0 16 12" aria-hidden="true">
 			<!-- Outer ring: semicircle open to the right, lead line out to the left-hand name. -->
 			<path
-				d="M11 1 A5 5 0 0 0 11 11"
+				d="M9.5 1 A5 5 0 0 0 9.5 11"
 				fill="none"
 				stroke="currentColor"
 				stroke-width="1.4"
 				stroke-linecap="round"
 			/>
-			<path d="M6 6 H0.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+			<path d="M4.5 6 H0.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
 			<!-- Inner disc: dot at the centre, lead line out through the open side to the right.
-			     Both leads are 5.5 units: the left runs 6 to 0.5, the right 13.6 to 19.1, each
+			     Both leads are 4 units: the left runs 4.5 to 0.5, the right 11.5 to 15.5, each
 			     ending 0.5 from its edge. Keep them equal if this is ever resized — an asymmetric
 			     pair reads as one parameter being subordinate to the other. -->
-			<circle cx="11" cy="6" r="1.9" fill="currentColor" />
-			<path d="M13.6 6 H19.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+			<circle cx="9.5" cy="6" r="1.9" fill="currentColor" />
+			<path d="M11.5 6 H15.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
 		</svg>
 
 		<label for={innerRangeId} class="name-label" aria-label={innerLabel} title={innerLabel}>
@@ -405,14 +406,18 @@
 
 <style>
 	.pot {
+		box-sizing: border-box;
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: var(--space-1);
-		/* min-width, not a fixed width: the heading and value line size to their own content, so if
-		   either is ever wider than 112px it grows the pot instead of visually overflowing it — the
-		   bug the CUT/RES shortening above was fixing. Comfortably inside the ~140px catalog column. */
-		min-width: 112px;
+		gap: 0;
+		/* Declared footprint: heading 16 + dial 48 + value line 32 = 96 tall, 96 wide
+		   (00-conventions.md §5.4). The 48px dial and the 88px value line are both narrower than
+		   the 96px module, so centering each already leaves its inset — 24px and 4px respectively —
+		   with no horizontal padding declared on the module itself. */
+		width: var(--mod-3);
+		height: var(--band-3);
 		font-family: var(--font-sans);
 		font-size: var(--font-size-sm);
 		color: var(--color-text);
@@ -420,10 +425,13 @@
 
 	.pair-heading {
 		display: flex;
+		flex-shrink: 0;
 		align-items: center;
 		justify-content: center;
+		height: var(--label-line);
 		gap: var(--space-1);
 		margin: 0;
+		overflow: hidden;
 		color: var(--color-text-muted);
 	}
 
@@ -472,6 +480,7 @@
 
 	.dial {
 		position: relative;
+		flex-shrink: 0;
 		width: var(--outer-d);
 		height: var(--outer-d);
 	}
@@ -547,18 +556,19 @@
 	/* Outer indicator reaches almost to the rim; the disc (painted after it) masks the portion inside
 	   the disc radius, so only the ring band ever shows a line — no separate clip path needed. */
 	.outer-indicator {
-		height: 25px;
+		height: var(--dual-outer-indicator);
 	}
 
 	.inner-indicator {
-		height: 14px;
+		height: var(--dual-inner-indicator);
 	}
 
 	.value-line {
 		display: flex;
+		flex-shrink: 0;
 		align-items: center;
 		justify-content: center;
-		gap: var(--space-1);
+		gap: 0;
 		margin: 0;
 		font-family: var(--font-mono);
 		color: var(--color-text-muted);
@@ -566,16 +576,20 @@
 
 	.value-sep {
 		flex: none;
+		width: var(--space-2);
+		text-align: center;
 	}
 
 	/* Fixed height reserves each half's space whether it's showing plain text or the swapped-in
-	   field, so opening either field never resizes the control or shifts its neighbours. */
+	   field, so opening either field never resizes the control or shifts its neighbours. Width is
+	   fixed too: 40 + separator 8 + 40 = 88, one value line, centred with a 4px inset in the 96px
+	   module (00-conventions.md §5.4). */
 	.value-half {
 		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 40px;
+		width: calc(var(--u) * 5);
 		height: var(--control-height);
 	}
 
@@ -612,10 +626,24 @@
 		}
 	}
 
+	/* Out of flow, like SegmentSwitch's .help: a validation message must never change the module's
+	   footprint (00-conventions.md §5.4). Still in the a11y tree and wired through the same
+	   aria-describedby as before — only its visual position moved. If both rings are invalid at
+	   once, the second error stacks under the first instead of overlapping it. */
 	.error {
-		margin: 0;
-		max-width: 100%;
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		z-index: 2;
+		width: max-content;
+		max-width: var(--mod-3);
+		margin: var(--pad-1) 0 0;
+		transform: translateX(-50%);
 		color: var(--color-danger);
 		text-align: center;
+	}
+
+	.error + .error {
+		top: calc(100% + 1.4em);
 	}
 </style>

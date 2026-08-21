@@ -23,8 +23,8 @@
 	.patch-header {
 		display: grid;
 		gap: var(--space-2);
-		width: min(100%, 360px);
-		padding: var(--space-2);
+		width: min(100%, var(--mod-12));
+		padding: var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-surface);
@@ -44,7 +44,7 @@
 		gap: var(--space-2);
 		min-width: 0;
 		align-items: baseline;
-		padding: 0 var(--space-1);
+		padding: 0 var(--pad-1);
 	}
 
 	.name {
@@ -65,7 +65,7 @@
 
 	button {
 		height: var(--control-height);
-		padding: 0 var(--space-2);
+		padding: 0 var(--pad-2);
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
 		background: var(--color-background);
@@ -89,12 +89,6 @@
 	button:focus-visible {
 		outline: 2px solid var(--color-accent);
 		outline-offset: 1px;
-	}
-
-	@media (max-width: 640px) {
-		.patch-header {
-			width: min(100%, 640px);
-		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -68,10 +68,10 @@
 	.confirm-dialog {
 		border: var(--border-width) solid var(--color-border-strong);
 		border-radius: var(--radius);
-		padding: var(--space-4);
+		padding: var(--pad-3);
 		background: var(--color-background);
 		color: var(--color-text);
-		max-width: 420px;
+		max-width: var(--mod-13);
 	}
 
 	.confirm-dialog h2 {

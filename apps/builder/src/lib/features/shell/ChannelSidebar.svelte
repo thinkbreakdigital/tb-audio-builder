@@ -23,14 +23,15 @@
 		background: var(--color-background);
 	}
 
-	/* Height matches the MainPanel tab bar so the two header rows align. */
+	/* Height matches the MainPanel tab bar so the two header rows align. One band; the
+	   border-bottom is absorbed inside it via border-box, not added on top. */
 	h2 {
 		display: flex;
 		flex: 0 0 auto;
 		align-items: center;
-		height: calc(var(--control-height) + var(--border-width));
+		height: var(--control-height);
 		margin: 0;
-		padding: 0 var(--space-3);
+		padding: 0 var(--space-4);
 		border-bottom: var(--border-width) solid var(--color-border);
 		font-size: var(--font-size-sm);
 		font-weight: 600;
